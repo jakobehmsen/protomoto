@@ -3,21 +3,12 @@ package protomoto;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class InstructionMapper {
-    public interface ASTArrayMapper {
-        void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild);
-    }
-    
-    public interface ASTLeafMapper {
-        void translate(Cell ast, List<InstructionEmitter> emitters);
-    }
-    
-    public static Instruction[] fromAST(MetaFrame metaFrame, Cell ast, Map<Cell, ASTArrayMapper> mappers, ASTLeafMapper leafMapper, InstructionEmitter endEmitter) {
+    public static Instruction[] fromAST(MetaFrame metaFrame, Cell ast, Map<Cell, ASTMapper> mappers, InstructionEmitter endEmitter) {
         ArrayList<InstructionEmitter> emitters = new ArrayList<>();
         
-        fromAST(ast, emitters, true, mappers, leafMapper);
+        fromAST(ast, emitters, true, mappers);
         emitters.add(endEmitter);
         
         emitters.forEach(e -> e.prepare(metaFrame));
@@ -29,24 +20,24 @@ public class InstructionMapper {
         return instructions.toArray(new Instruction[instructions.size()]);
     }
     
-    public static void fromAST(Cell ast, List<InstructionEmitter> emitters, boolean asExpression, Map<Cell, ASTArrayMapper> mappers, ASTLeafMapper leafMapper) {
+    public static void fromAST(Cell ast, List<InstructionEmitter> emitters, boolean asExpression, Map<Cell, ASTMapper> mappers) {
         if(ast instanceof ArrayCell) {
             ArrayCell arrayAst = (ArrayCell)ast;
             if(arrayAst.items.length > 0 && arrayAst.items[0] instanceof StringCell) {
                 Cell astType = arrayAst.items[0];
-                ASTArrayMapper mapper = mappers.get(astType);
+                ASTMapper mapper = mappers.get(astType);
                 
-                mapper.translate(arrayAst, emitters, asExpression, child -> fromAST(child, emitters, true, mappers, leafMapper));
+                mapper.translate(arrayAst, emitters, asExpression, child -> fromAST(child, emitters, true, mappers));
             } else {
                 // What if empty?
                 
                 for(int i = 0; i < arrayAst.items.length; i++) {
                     boolean childAsExpression = i == arrayAst.items.length - 1;
-                    fromAST(arrayAst.items[i], emitters, childAsExpression, mappers, leafMapper);
+                    fromAST(arrayAst.items[i], emitters, childAsExpression, mappers);
                 }
             }
         } else {
-            leafMapper.translate(ast, emitters);
+            // How to handle leafs?
         }
     }
 }

@@ -74,50 +74,14 @@ public class Environment {
     }
     
     public Instruction[] getInstructions(MetaFrame metaFrame, Cell ast, InstructionEmitter endEmitter) {
-        Hashtable<Cell, InstructionMapper.ASTArrayMapper> mappers = new Hashtable<>();
+        Hashtable<Cell, ASTMapper> mappers = new Hashtable<>();
         
-        mappers.put(createString("consti"), new InstructionMapper.ASTArrayMapper() {
-            @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
-                if(asExpression) {
-                    IntegerCell integer = (IntegerCell) ast.get(1);
-                    int value = integer.getIntValue();
-                
-                    emitters.add(InstructionEmitters.single(Instructions.pushi(value)));
-                }
-            }
-        });
+        mappers.put(createString("consti"), ASTMappers.<IntegerCell>constExpression(i -> Instructions.pushi(i.getIntValue())));
+        mappers.put(createString("consts"), ASTMappers.<StringCell>constExpression(s -> Instructions.pushs(s.string)));
         
-        mappers.put(createString("consts"), new InstructionMapper.ASTArrayMapper() {
-            @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
-                if(asExpression) {
-                    StringCell string = (StringCell) ast.get(1);
-                    String value = string.string;
-                
-                    emitters.add(InstructionEmitters.single(Instructions.pushs(value)));
-                }
-            }
-        });
+        mappers.put(createString("addi"), ASTMappers.binaryExpression(Instructions.addi()));
         
-        mappers.put(createString("addi"), new InstructionMapper.ASTArrayMapper() {
-            @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
-                Cell lhs = (Cell) ast.get(1);
-                Cell rhs = (Cell) ast.get(2);
-                
-                translateChild.accept(lhs);
-                translateChild.accept(rhs);
-                
-                emitters.add(InstructionEmitters.single(Instructions.addi()));
-                
-                if(!asExpression) {
-                    emitters.add(InstructionEmitters.single(Instructions.pop()));
-                }
-            }
-        });
-        
-        mappers.put(createString("var"), new InstructionMapper.ASTArrayMapper() {
+        mappers.put(createString("var"), new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
                 StringCell name = (StringCell) ast.get(1);
@@ -145,7 +109,7 @@ public class Environment {
             }
         });
         
-        mappers.put(createString("get"), new InstructionMapper.ASTArrayMapper() {
+        mappers.put(createString("get"), new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
                 StringCell name = (StringCell) ast.get(1);
@@ -163,11 +127,6 @@ public class Environment {
             }
         });
         
-        return InstructionMapper.fromAST(metaFrame, ast, mappers, new InstructionMapper.ASTLeafMapper() {
-            @Override
-            public void translate(Cell ast, List<InstructionEmitter> emitters) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-        }, endEmitter);
+        return InstructionMapper.fromAST(metaFrame, ast, mappers, endEmitter);
     }
 }
