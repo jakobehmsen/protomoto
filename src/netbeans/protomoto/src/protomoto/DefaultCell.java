@@ -1,14 +1,14 @@
 package protomoto;
 
-public class DefaultProtoCell extends AbstractProtoCell {
-    private AbstractProtoCell proto;
+public class DefaultCell extends AbstractCell {
+    private Cell proto;
     
-    public DefaultProtoCell(AbstractProtoCell proto) {
+    public DefaultCell(Cell proto) {
         this.proto = proto;
     }
 
     @Override
-    protected AbstractProtoCell resolveProto(ProtoEnvironment environment) {
+    public Cell resolveProto(Environment environment) {
         return proto;
     }
 

@@ -7,14 +7,14 @@ import java.util.function.Consumer;
 
 public class InstructionMapper {
     public interface ASTArrayMapper {
-        void translate(ArrayProtoCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<AbstractProtoCell> translateChild);
+        void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild);
     }
     
     public interface ASTLeafMapper {
-        void translate(AbstractProtoCell ast, List<InstructionEmitter> emitters);
+        void translate(Cell ast, List<InstructionEmitter> emitters);
     }
     
-    public static Instruction[] fromAST(MetaFrame metaFrame, AbstractProtoCell ast, Map<AbstractProtoCell, ASTArrayMapper> mappers, ASTLeafMapper leafMapper, InstructionEmitter endEmitter) {
+    public static Instruction[] fromAST(MetaFrame metaFrame, Cell ast, Map<Cell, ASTArrayMapper> mappers, ASTLeafMapper leafMapper, InstructionEmitter endEmitter) {
         ArrayList<InstructionEmitter> emitters = new ArrayList<>();
         
         fromAST(ast, emitters, true, mappers, leafMapper);
@@ -29,11 +29,11 @@ public class InstructionMapper {
         return instructions.toArray(new Instruction[instructions.size()]);
     }
     
-    public static void fromAST(AbstractProtoCell ast, List<InstructionEmitter> emitters, boolean asExpression, Map<AbstractProtoCell, ASTArrayMapper> mappers, ASTLeafMapper leafMapper) {
-        if(ast instanceof ArrayProtoCell) {
-            ArrayProtoCell arrayAst = (ArrayProtoCell)ast;
-            if(arrayAst.items.length > 0 && arrayAst.items[0] instanceof StringProtoCell) {
-                AbstractProtoCell astType = arrayAst.items[0];
+    public static void fromAST(Cell ast, List<InstructionEmitter> emitters, boolean asExpression, Map<Cell, ASTArrayMapper> mappers, ASTLeafMapper leafMapper) {
+        if(ast instanceof ArrayCell) {
+            ArrayCell arrayAst = (ArrayCell)ast;
+            if(arrayAst.items.length > 0 && arrayAst.items[0] instanceof StringCell) {
+                Cell astType = arrayAst.items[0];
                 ASTArrayMapper mapper = mappers.get(astType);
                 
                 mapper.translate(arrayAst, emitters, asExpression, child -> fromAST(child, emitters, true, mappers, leafMapper));

@@ -1,11 +1,9 @@
 package protomoto;
 
-import java.util.Objects;
-
-public class StringProtoCell extends AbstractProtoCell {
+public class StringCell extends AbstractCell {
     public final String string;
 
-    public StringProtoCell(String string) {
+    public StringCell(String string) {
         this.string = string;
     }
 
@@ -15,13 +13,13 @@ public class StringProtoCell extends AbstractProtoCell {
     }
 
     @Override
-    protected AbstractProtoCell resolveProto(ProtoEnvironment environment) {
+    public Cell resolveProto(Environment environment) {
         return environment.getStringProto();
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof StringProtoCell && this.string.equals(((StringProtoCell)obj).string);
+        return obj instanceof StringCell && this.string.equals(((StringCell)obj).string);
     }
 
     @Override

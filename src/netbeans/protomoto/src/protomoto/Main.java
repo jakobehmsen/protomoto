@@ -2,7 +2,7 @@ package protomoto;
 
 public class Main {
     public static void main(String[] args) {
-        ProtoEnvironment environment = new ProtoEnvironment();
+        Environment environment = new Environment();
         
         environment.getIntegerProto().put(environment.getSymbolCode("+"), new BehaviorProtoCell(new Instruction[]{
             Instructions.load(0),

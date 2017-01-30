@@ -1,6 +1,6 @@
 package protomoto;
 
-public class BehaviorProtoCell extends AbstractProtoCell {
+public class BehaviorProtoCell extends AbstractCell {
     private Instruction[] instructions;
     private int variableCount;
 
@@ -15,12 +15,12 @@ public class BehaviorProtoCell extends AbstractProtoCell {
     }
 
     @Override
-    protected AbstractProtoCell resolveProto(ProtoEnvironment environment) {
+    public Cell resolveProto(Environment environment) {
         return environment.getBehaviorProto();
     }
     
-    public ProtoFrame createSendFrame(ProtoEvaluator evaluator, ProtoFrame sender, AbstractProtoCell self, int arity) {
-        ProtoFrame frame = new ProtoFrame(evaluator, sender, instructions);
+    public Frame createSendFrame(Evaluator evaluator, Frame sender, Cell self, int arity) {
+        Frame frame = new Frame(evaluator, sender, instructions);
         
         frame.push(self);
         frame.allocate(variableCount);
