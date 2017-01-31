@@ -40,11 +40,17 @@ public class Main {
         
         Ast ast = new Ast(environment);
         
-        Cell program = ast.seq(
+        Cell program = AstParser.PARSER.parse(
+            "(var x (consti 6))" +
+            "(var y (consti 7))" +
+            "(addi (get x) (get y))"
+        );
+        
+        /*Cell program = ast.seq(
             ast.var("x", ast.consti(6)),
             ast.var("y", ast.consti(7)),
             ast.addi(ast.get("x"), ast.get("y"))
-        );
+        );*/
         
         //Cell program = ast.addi(ast.consti(6), ast.consti(7));
         
