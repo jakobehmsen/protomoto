@@ -27,6 +27,9 @@ public class InstructionMapper {
                 Cell astType = arrayAst.items[0];
                 ASTMapper mapper = mappers.get(astType);
                 
+                if(mapper == null)
+                    throw new IllegalArgumentException("Cannot find mapper for " + astType);
+                
                 mapper.translate(arrayAst, emitters, asExpression, child -> fromAST(child, emitters, true, mappers));
             } else {
                 // What if empty?

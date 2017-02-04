@@ -1,5 +1,9 @@
 package protomoto;
 
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
 public class Instructions {
     public static Instruction respond() {
         return new Instruction() {
@@ -59,24 +63,69 @@ public class Instructions {
         };
     }
     
-    public static Instruction addi() {
+    public static Instruction unaryExpr(Function<Cell, Cell> exprFunction) {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                Cell c = frame.pop();
+                Cell result = exprFunction.apply(c);
+                frame.push(result);
+                frame.incIP();
+            }
+        };
+    }
+    
+    public static Instruction binaryMod(BiConsumer<Cell, Cell> mod) {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                Cell[] buffer = new Cell[2];
+
+                frame.popInto(0, 2, buffer);
+                mod.accept(buffer[0], buffer[1]);
+                frame.incIP();
+            }
+        };
+    }
+    
+    public static Instruction binaryIntExpr(BiFunction<Integer, Integer, Integer> intFunction) {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
                 IntegerCell[] buffer = new IntegerCell[2];
-                
+
                 frame.popInto(0, 2, buffer);
                 int lhs = buffer[0].getIntValue();
                 int rhs = buffer[1].getIntValue();
-                frame.pushi(lhs + rhs);
+                int result = intFunction.apply(lhs, rhs);
+                frame.pushi(result);
                 frame.incIP();
             }
-
-            @Override
-            public String toString() {
-                return "addi";
-            }
         };
+    }
+    
+    public static Instruction addi() {
+        return binaryIntExpr((lhs, rhs) -> lhs + rhs);
+    }
+    
+    public static Instruction subi() {
+        return binaryIntExpr((lhs, rhs) -> lhs - rhs);
+    }
+    
+    public static Instruction muli() {
+        return binaryIntExpr((lhs, rhs) -> lhs * rhs);
+    }
+    
+    public static Instruction divi() {
+        return binaryIntExpr((lhs, rhs) -> lhs / rhs);
+    }
+    
+    public static Instruction setSlot(int symbolCode) {
+        return binaryMod((self, value) -> self.put(symbolCode, value));
+    }
+    
+    public static Instruction getSlot(int symbolCode) {
+        return unaryExpr((self) -> self.get(symbolCode));
     }
     
     public static Instruction newBehavior() {
@@ -197,11 +246,37 @@ public class Instructions {
             @Override
             public void execute(Frame frame) {
                 frame.pop();
+                frame.incIP();
             }
 
             @Override
             public String toString() {
                 return "pop";
+            }
+        };
+    }
+
+    public static Instruction environment() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                frame.push(frame.getEnvironment().getAnyProto());
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "pop";
+            }
+        };
+    }
+
+    public static Instruction pushb(BehaviorCell behavior) {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                frame.push(behavior);
+                frame.incIP();
             }
         };
     }

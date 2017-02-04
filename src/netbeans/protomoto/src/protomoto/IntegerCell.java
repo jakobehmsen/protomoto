@@ -22,7 +22,7 @@ public class IntegerCell extends AbstractCell {
     }
 
     @Override
-    public BehaviorProtoCell resolveEvaluateBehavior() {
+    public BehaviorCell resolveEvaluateBehavior() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

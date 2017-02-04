@@ -16,12 +16,17 @@ public class Frame {
         this.instructions = instructions;
     }
 
+    public Environment getEnvironment() {
+        return evaluator.getEnvironment();
+    }
+
     public void push(Cell cell) {
         stack.push(cell);
     }
 
     public void pushFrom(int offset, int count, Cell[] buffer) {
-        for(int i = 0; i < count; i++)
+        int end = offset + count;
+        for(int i = offset; i < end; i++)
             stack.push(buffer[i]);
     }
 
@@ -50,12 +55,12 @@ public class Frame {
     }
 
     public void send(int symbolCode, int arity) {
-        // Make new GIT repo for protomoto
-        // Cells pushed from the outside isn't necesary Cells
-        Cell receiver = stack.pop();
-        BehaviorProtoCell behavior = receiver.resolveBehavior(evaluator.getEnvironment(), symbolCode);
+        Cell[] cells = new Cell[1 + arity];
+        popInto(0, 1 + arity, cells);
+        Cell receiver = cells[0];
+        BehaviorCell behavior = receiver.resolveBehavior(evaluator.getEnvironment(), symbolCode);
         
-        Frame sendFrame = behavior.createSendFrame(evaluator, this, receiver, arity);
+        Frame sendFrame = behavior.createSendFrame(evaluator, this, arity, cells);
         
         evaluator.setFrame(sendFrame);
     }
@@ -109,7 +114,7 @@ public class Frame {
 
     public void newBehavior() {
         Cell ast = stack.pop();
-        BehaviorProtoCell behavior = evaluator.getEnvironment().createBehavior(ast);
+        BehaviorCell behavior = evaluator.getEnvironment().createBehavior(null, ast);
         stack.push(behavior);
     }
 

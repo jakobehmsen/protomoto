@@ -18,14 +18,19 @@ public class Environment {
         behaviorProto = new DefaultCell(anyProto);
         arrayProto = new DefaultCell(anyProto);
         stringProto = new DefaultCell(anyProto);
+        
+        anyProto.put(getSymbolCode("Integer"), integerProto);
+        anyProto.put(getSymbolCode("Behavior"), behaviorProto);
+        anyProto.put(getSymbolCode("Array"), arrayProto);
+        anyProto.put(getSymbolCode("String"), stringProto);
     }
 
     public Evaluator createEvaluator(Cell receiver, Cell ast) {
         Evaluator evaluator = new Evaluator(this);
         MetaFrame metaFrame = new MetaFrame();
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish()));
-        BehaviorProtoCell behavior = new BehaviorProtoCell(instructions, metaFrame.variableCount());
-        Frame frame = behavior.createSendFrame(evaluator, null, anyProto, 0);
+        BehaviorCell behavior = new BehaviorCell(instructions, metaFrame.variableCount());
+        Frame frame = behavior.createSendFrame(evaluator, null, 0, new Cell[]{anyProto});
         evaluator.setFrame(frame);
         return evaluator;
     }
@@ -46,7 +51,7 @@ public class Environment {
         return behaviorProto;
     }
 
-    public int getSymbolCode(String string) {
+    public final int getSymbolCode(String string) {
         return stringToSymbolCode.computeIfAbsent(string, k -> stringToSymbolCode.size());
     }
 
@@ -58,11 +63,14 @@ public class Environment {
         return stringProto;
     }
 
-    public BehaviorProtoCell createBehavior(Cell ast) {
+    public BehaviorCell createBehavior(String[] parameters, Cell ast) {
         MetaFrame metaFrame = new MetaFrame();
+        for (String parameter: parameters) {
+            metaFrame.declareVar(parameter);
+        }
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.respond()));
         
-        return new BehaviorProtoCell(instructions, metaFrame.variableCount());
+        return new BehaviorCell(instructions, metaFrame.variableCount() - parameters.length);
     }
 
     public ArrayCell createArray(int length) {
@@ -80,6 +88,71 @@ public class Environment {
         mappers.put(createString("consts"), ASTMappers.<StringCell>constExpression(s -> Instructions.pushs(s.string)));
         
         mappers.put(createString("addi"), ASTMappers.binaryExpression(Instructions.addi()));
+        mappers.put(createString("subi"), ASTMappers.binaryExpression(Instructions.subi()));
+        mappers.put(createString("muli"), ASTMappers.binaryExpression(Instructions.muli()));
+        mappers.put(createString("divi"), ASTMappers.binaryExpression(Instructions.divi()));
+        
+        mappers.put(createString("environment"), ASTMappers.nnaryExpression(Instructions.environment(), 0));
+        
+        mappers.put(createString("send"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+                Cell receiver = ast.get(1);
+                StringCell name = (StringCell) ast.get(2);
+                int symbolCode = getSymbolCode(name.string);
+                int arity = ast.items.length - 3;
+                
+                translateChild.accept(receiver);
+                
+                for(int i = 3; i < ast.items.length; i++) {
+                    Cell argument = ast.items[i];
+                    translateChild.accept(argument);
+                }
+                
+                emitters.add(InstructionEmitters.single(Instructions.send(symbolCode, arity)));
+                
+                if(!asExpression) {
+                    emitters.add(InstructionEmitters.single(Instructions.pop()));
+                }
+            }
+        });
+        mappers.put(createString("set_slot"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+                Cell receiver = ast.get(1);
+                StringCell name = (StringCell) ast.get(2);
+                int symbolCode = getSymbolCode(name.string);
+                Cell value = ast.get(3);
+                
+                translateChild.accept(receiver);
+                translateChild.accept(value);
+                
+                emitters.add(InstructionEmitters.single(Instructions.setSlot(symbolCode)));
+                
+                if(!asExpression) {
+                    emitters.add(InstructionEmitters.single(Instructions.pop()));
+                }
+            }
+        });
+        mappers.put(createString("behavior"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+                if(asExpression) {
+                    ArrayCell parametersCell = (ArrayCell)ast.get(1);
+                    String[] parameters = new String[parametersCell.items.length];
+                    
+                    for(int i = 0; i < parametersCell.items.length; i++) {
+                        parameters[i] = ((StringCell)parametersCell.items[i]).string;
+                    }
+                    
+                    Cell body = ast.get(2);
+
+                    BehaviorCell behavior = createBehavior(parameters, body);
+                    
+                    emitters.add(InstructionEmitters.single(Instructions.pushb(behavior)));
+                }
+            }
+        });
         
         mappers.put(createString("var"), new ASTMapper() {
             @Override
