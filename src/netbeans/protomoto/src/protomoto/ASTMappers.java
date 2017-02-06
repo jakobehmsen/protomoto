@@ -41,8 +41,8 @@ public class ASTMappers {
         return new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
-                for(int i = ast.items.length - arity; i < ast.items.length - arity; i++) {
-                    Cell cell = (Cell) ast.get(1);
+                for(int i = ast.items.length - arity; i < ast.items.length; i++) {
+                    Cell cell = (Cell) ast.get(i);
                     translateChild.accept(cell);
                 }
                 

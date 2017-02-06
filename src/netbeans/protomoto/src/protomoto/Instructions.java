@@ -143,7 +143,7 @@ public class Instructions {
         };
     }
     
-    public static Instruction newArray() {
+    public static Instruction arrayNew() {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
@@ -174,7 +174,22 @@ public class Instructions {
         };
     }
     
-    public static Instruction setArray() {
+    public static Instruction dup2() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                frame.dup2();
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "dup2";
+            }
+        };
+    }
+    
+    public static Instruction arraySet() {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
@@ -192,7 +207,31 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "setArray";
+                return "arraySet";
+            }
+        };
+    }
+    
+    public static Instruction arrayGet() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                Cell[] buffer = new Cell[2];
+                
+                frame.popInto(0, 2, buffer);
+                
+                ArrayCell array = (ArrayCell) buffer[0];
+                IntegerCell index = (IntegerCell) buffer[1];
+                Cell value = array.get(index.getIntValue());
+                
+                frame.push(value);
+                
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "arraySet";
             }
         };
     }

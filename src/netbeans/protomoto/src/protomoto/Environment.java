@@ -1,5 +1,6 @@
 package protomoto;
 
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.function.Consumer;
@@ -10,6 +11,7 @@ public class Environment {
     private DefaultCell behaviorProto;
     private DefaultCell arrayProto;
     private DefaultCell stringProto;
+    private DefaultCell nil;
     private Hashtable<String, Integer> stringToSymbolCode = new Hashtable<>();
     
     public Environment() {
@@ -18,11 +20,13 @@ public class Environment {
         behaviorProto = new DefaultCell(anyProto);
         arrayProto = new DefaultCell(anyProto);
         stringProto = new DefaultCell(anyProto);
+        nil = new DefaultCell(anyProto);
         
         anyProto.put(getSymbolCode("Integer"), integerProto);
         anyProto.put(getSymbolCode("Behavior"), behaviorProto);
         anyProto.put(getSymbolCode("Array"), arrayProto);
         anyProto.put(getSymbolCode("String"), stringProto);
+        nil.put(getSymbolCode("Nil"), nil);
     }
 
     public Evaluator createEvaluator(Cell receiver, Cell ast) {
@@ -63,6 +67,10 @@ public class Environment {
         return stringProto;
     }
 
+    public DefaultCell getNil() {
+        return nil;
+    }
+
     public BehaviorCell createBehavior(String[] parameters, Cell ast) {
         MetaFrame metaFrame = new MetaFrame();
         for (String parameter: parameters) {
@@ -74,7 +82,9 @@ public class Environment {
     }
 
     public ArrayCell createArray(int length) {
-        return new ArrayCell((new Cell[length]));
+        Cell[] items = new Cell[length];
+        Arrays.fill(items, 0, length, nil);
+        return new ArrayCell(items);
     }
 
     public StringCell createString(String string) {
@@ -93,6 +103,8 @@ public class Environment {
         mappers.put(createString("divi"), ASTMappers.binaryExpression(Instructions.divi()));
         
         mappers.put(createString("environment"), ASTMappers.nnaryExpression(Instructions.environment(), 0));
+        
+        mappers.put(createString("array_new"), ASTMappers.nnaryExpression(Instructions.arrayNew(), 1));
         
         mappers.put(createString("send"), new ASTMapper() {
             @Override
@@ -127,13 +139,31 @@ public class Environment {
                 translateChild.accept(receiver);
                 translateChild.accept(value);
                 
+                if(!asExpression) {
+                    emitters.add(InstructionEmitters.single(Instructions.dup2()));
+                }
+                
                 emitters.add(InstructionEmitters.single(Instructions.setSlot(symbolCode)));
+            }
+        });
+        mappers.put(createString("get_slot"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+                Cell receiver = ast.get(1);
+                StringCell name = (StringCell) ast.get(2);
+                int symbolCode = getSymbolCode(name.string);
+                
+                translateChild.accept(receiver);
+                
+                emitters.add(InstructionEmitters.single(Instructions.getSlot(symbolCode)));
                 
                 if(!asExpression) {
                     emitters.add(InstructionEmitters.single(Instructions.pop()));
                 }
             }
         });
+        // Define array_set
+        mappers.put(createString("array_get"), ASTMappers.nnaryExpression(Instructions.arraySet(), 2));
         mappers.put(createString("behavior"), new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {

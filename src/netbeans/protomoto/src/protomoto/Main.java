@@ -27,23 +27,34 @@ public class Main {
         };*/
         Instruction[] instructions = new Instruction[] {
             Instructions.pushi(2),
-            Instructions.newArray(),
+            Instructions.arrayNew(),
             Instructions.dup(),
             Instructions.pushi(0),
             Instructions.pushs("consti"),
-            Instructions.setArray(),
+            Instructions.arraySet(),
             Instructions.dup(),
             Instructions.pushi(1),
             Instructions.pushi(5),
-            Instructions.setArray(),
+            Instructions.arraySet(),
             Instructions.newBehavior(),
             Instructions.finish()
         };
         
         Cell program = AstParser.PARSER.parse(
-            "(set_slot (environment 'String') println (behavior (x) (get x)))\n" +
-            "(send (environment) println (consts 'Pass it on'))\n"
+            "(var arr (array_new (consti 3)))\n" +
+            "(array_set (get arr) 0 (consti 5))\n" +
+            "(get arr)\n"
         );
+        
+        /*Cell program = AstParser.PARSER.parse(
+            "(set_slot (environment) someValue (consts 'ABC'))\n" +
+            "(get_slot (environment) someValue)\n"
+        );*/
+        
+        /*Cell program = AstParser.PARSER.parse(
+            "(set_slot (environment) println (behavior (x) (get x)))\n" +
+            "(send (environment) println (consts 'Pass it on'))\n"
+        );*/
         
         /*Cell program = AstParser.PARSER.parse(
             "(var x (consti 6))\n" +
