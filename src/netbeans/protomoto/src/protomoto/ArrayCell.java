@@ -3,7 +3,7 @@ package protomoto;
 import java.util.Arrays;
 
 public class ArrayCell extends AbstractCell {
-    public final Cell[] items;
+    private final Cell[] items;
 
     public ArrayCell(Cell[] items) {
         this.items = items;
@@ -30,5 +30,9 @@ public class ArrayCell extends AbstractCell {
     @Override
     public String toString() {
         return Arrays.toString(items);
+    }
+
+    public int length() {
+        return items.length;
     }
 }

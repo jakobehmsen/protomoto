@@ -23,8 +23,8 @@ public class InstructionMapper {
     public static void fromAST(Cell ast, List<InstructionEmitter> emitters, boolean asExpression, Map<Cell, ASTMapper> mappers) {
         if(ast instanceof ArrayCell) {
             ArrayCell arrayAst = (ArrayCell)ast;
-            if(arrayAst.items.length > 0 && arrayAst.items[0] instanceof StringCell) {
-                Cell astType = arrayAst.items[0];
+            if(arrayAst.length() > 0 && arrayAst.get(0) instanceof StringCell) {
+                Cell astType = arrayAst.get(0);
                 ASTMapper mapper = mappers.get(astType);
                 
                 if(mapper == null)
@@ -34,9 +34,9 @@ public class InstructionMapper {
             } else {
                 // What if empty?
                 
-                for(int i = 0; i < arrayAst.items.length; i++) {
-                    boolean childAsExpression = i == arrayAst.items.length - 1;
-                    fromAST(arrayAst.items[i], emitters, childAsExpression, mappers);
+                for(int i = 0; i < arrayAst.length(); i++) {
+                    boolean childAsExpression = i == arrayAst.length() - 1;
+                    fromAST(arrayAst.get(i), emitters, childAsExpression, mappers);
                 }
             }
         } else {

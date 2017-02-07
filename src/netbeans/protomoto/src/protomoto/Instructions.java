@@ -63,12 +63,12 @@ public class Instructions {
         };
     }
     
-    public static Instruction unaryExpr(Function<Cell, Cell> exprFunction) {
+    public static <T extends Cell> Instruction unaryExpr(Function<T, T> exprFunction) {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
-                Cell c = frame.pop();
-                Cell result = exprFunction.apply(c);
+                T c = (T) frame.pop();
+                T result = exprFunction.apply(c);
                 frame.push(result);
                 frame.incIP();
             }
@@ -159,6 +159,22 @@ public class Instructions {
         };
     }
     
+    public static Instruction arrayLength() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                ArrayCell array = (ArrayCell) frame.pop();
+                frame.pushi(array.length());
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "newArray";
+            }
+        };
+    }
+    
     public static Instruction dup() {
         return new Instruction() {
             @Override
@@ -185,6 +201,21 @@ public class Instructions {
             @Override
             public String toString() {
                 return "dup2";
+            }
+        };
+    }
+    
+    public static Instruction dup3() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                frame.dup3();
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "dup3";
             }
         };
     }

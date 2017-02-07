@@ -42,8 +42,11 @@ public class Main {
         
         Cell program = AstParser.PARSER.parse(
             "(var arr (array_new (consti 3)))\n" +
-            "(array_set (get arr) 0 (consti 5))\n" +
-            "(get arr)\n"
+            "(array_set (get arr) (consti 0) (consti 5))\n" +
+            "(array_set (get arr) (consti 1) (consti 7))\n" +
+            "(array_set (get arr) (consti 2) (consti 9))\n" +
+            "(get arr)"
+            //"(array_length (get arr))"
         );
         
         /*Cell program = AstParser.PARSER.parse(

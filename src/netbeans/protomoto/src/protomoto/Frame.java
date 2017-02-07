@@ -130,6 +130,10 @@ public class Frame {
         stack.add(stack.size() - 2, stack.peek());
     }
 
+    public void dup3() {
+        stack.add(stack.size() - 3, stack.peek());
+    }
+
     public void pushs(String string) {
         stack.push(evaluator.getEnvironment().createString(string));
     }

@@ -112,12 +112,12 @@ public class Environment {
                 Cell receiver = ast.get(1);
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
-                int arity = ast.items.length - 3;
+                int arity = ast.length() - 3;
                 
                 translateChild.accept(receiver);
                 
-                for(int i = 3; i < ast.items.length; i++) {
-                    Cell argument = ast.items[i];
+                for(int i = 3; i < ast.length(); i++) {
+                    Cell argument = ast.get(i);
                     translateChild.accept(argument);
                 }
                 
@@ -139,7 +139,7 @@ public class Environment {
                 translateChild.accept(receiver);
                 translateChild.accept(value);
                 
-                if(!asExpression) {
+                if(asExpression) {
                     emitters.add(InstructionEmitters.single(Instructions.dup2()));
                 }
                 
@@ -163,16 +163,35 @@ public class Environment {
             }
         });
         // Define array_set
+        mappers.put(createString("array_set"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+                Cell receiver = ast.get(1);
+                Cell index = ast.get(2);
+                Cell value = ast.get(3);
+                
+                translateChild.accept(receiver);
+                translateChild.accept(index);
+                translateChild.accept(value);
+                
+                if(asExpression) {
+                    emitters.add(InstructionEmitters.single(Instructions.dup3()));
+                }
+                
+                emitters.add(InstructionEmitters.single(Instructions.arraySet()));
+            }
+        });
         mappers.put(createString("array_get"), ASTMappers.nnaryExpression(Instructions.arraySet(), 2));
+        mappers.put(createString("array_length"), ASTMappers.nnaryExpression(Instructions.arrayLength(), 1));
         mappers.put(createString("behavior"), new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
                 if(asExpression) {
                     ArrayCell parametersCell = (ArrayCell)ast.get(1);
-                    String[] parameters = new String[parametersCell.items.length];
+                    String[] parameters = new String[parametersCell.length()];
                     
-                    for(int i = 0; i < parametersCell.items.length; i++) {
-                        parameters[i] = ((StringCell)parametersCell.items[i]).string;
+                    for(int i = 0; i < parametersCell.length(); i++) {
+                        parameters[i] = ((StringCell)parametersCell.get(i)).string;
                     }
                     
                     Cell body = ast.get(2);
