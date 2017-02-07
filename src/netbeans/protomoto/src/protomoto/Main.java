@@ -1,9 +1,34 @@
 package protomoto;
 
 import java.io.IOException;
+import java.util.Hashtable;
+import protomoto.ast.ASTCell;
+import protomoto.ast.ASTList;
+import protomoto.ast.ASTString;
+import protomoto.patterns.ListPatterns;
+import protomoto.patterns.Pattern;
+import protomoto.patterns.Patterns;
 
 public class Main {
     public static void main(String[] args) throws IOException {
+        Pattern p = Patterns.subsumesList(ListPatterns.sequence(
+            ListPatterns.capture("b", ListPatterns.lazy(ListPatterns.single(Patterns.any()))),
+            ListPatterns.single(Patterns.subsumesList(ListPatterns.sequence(
+                ListPatterns.single(Patterns.equalsString("var")), 
+                ListPatterns.single(Patterns.capture(Patterns.any(), "n")), 
+                ListPatterns.single(Patterns.capture(Patterns.any(), "v"))
+            ))),
+            ListPatterns.capture("a", ListPatterns.lazy(ListPatterns.single(Patterns.any())))
+        ));
+        
+        ASTCell c = new ASTList(new ASTCell[]{
+            new ASTList(new ASTCell[]{new ASTString("Beginning")}),
+            new ASTList(new ASTCell[]{new ASTString("var"), new ASTString("x"), new ASTString("someValue")}),
+            new ASTList(new ASTCell[]{new ASTString("End")}),
+        });
+        Hashtable<String, ASTCell> captures = new Hashtable<>();
+        p.matches(c, captures);
+        
         Environment environment = new Environment();
         
         environment.getIntegerProto().put(environment.getSymbolCode("+"), new BehaviorCell(new Instruction[]{
