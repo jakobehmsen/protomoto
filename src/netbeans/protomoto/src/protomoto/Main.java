@@ -50,7 +50,7 @@ public class Main {
             Instructions.send(environment.getSymbolCode("+"), 1),
             Instructions.finish()
         };*/
-        Instruction[] instructions = new Instruction[] {
+        /*Instruction[] instructions = new Instruction[] {
             Instructions.pushi(2),
             Instructions.arrayNew(),
             Instructions.dup(),
@@ -63,7 +63,7 @@ public class Main {
             Instructions.arraySet(),
             Instructions.newBehavior(),
             Instructions.finish()
-        };
+        };*/
         
         Cell program = AstParser.PARSER.parse(
             "(var arr (array_new (consti 3)))\n" +
@@ -100,8 +100,7 @@ public class Main {
         //Ast ast = new Ast(environment);
         //Cell program = ast.addi(ast.consti(6), ast.consti(7));
         
-        Cell cell = environment.getAnyProto();
-        Evaluator evaluator = environment.createEvaluator(cell, program);
+        Evaluator evaluator = environment.createEvaluator(program);
         int maxProceeds = 1000;
         int proceeds = 0;
         while(!evaluator.isFinished()) {

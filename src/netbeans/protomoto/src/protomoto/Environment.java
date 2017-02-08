@@ -29,7 +29,7 @@ public class Environment {
         nil.put(getSymbolCode("Nil"), nil);
     }
 
-    public Evaluator createEvaluator(Cell receiver, Cell ast) {
+    public Evaluator createEvaluator(Cell ast) {
         Evaluator evaluator = new Evaluator(this);
         MetaFrame metaFrame = new MetaFrame();
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish()));

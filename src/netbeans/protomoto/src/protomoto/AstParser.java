@@ -6,6 +6,7 @@ import org.jparsec.Scanners;
 import org.jparsec.Terminals;
 
 public class AstParser {
+    // Could be given a factory object, that creates lists, integers, and strings
     private static final Parser<Cell> INTEGER = Terminals.IntegerLiteral.PARSER.map((java.lang.String str) -> new IntegerCell(Integer.parseInt(str)));
     private static final Parser<Cell> STRING = Terminals.StringLiteral.PARSER.map((java.lang.String str) -> new StringCell(str));
     private static final Parser<Cell> SYMBOL = Terminals.Identifier.PARSER.map((java.lang.String str) -> new StringCell(str));
