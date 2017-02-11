@@ -1,6 +1,8 @@
 package protomoto.patterns;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 import protomoto.ast.ASTCell;
 import protomoto.ast.ASTCellVisitor;
 
@@ -11,6 +13,11 @@ public class Patterns {
             public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
                 return false;
             }
+
+            @Override
+            public String toString() {
+                return "~";
+            }
         };
     }
     
@@ -19,6 +26,11 @@ public class Patterns {
             @Override
             public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
                 return true;
+            }
+
+            @Override
+            public String toString() {
+                return "_";
             }
         };
     }
@@ -33,6 +45,11 @@ public class Patterns {
                 }
                 
                 return false;
+            }
+
+            @Override
+            public String toString() {
+                return pattern + ":" + name;
             }
         };
     }
@@ -57,6 +74,40 @@ public class Patterns {
                         return false;
                     }
                 });
+            }
+
+            @Override
+            public String toString() {
+                return "\"" + stringToMatch + "\"";
+            }
+        };
+    }
+    
+    public static Pattern equalsInt(int intToMatch) {
+        return new Pattern() {
+            @Override
+            public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
+                return cell.accept(new ASTCellVisitor<Boolean>() {
+                    @Override
+                    public Boolean visitList(ASTCell[] items) {
+                        return false;
+                    }
+
+                    @Override
+                    public Boolean visitString(String string) {
+                        return false;
+                    }
+
+                    @Override
+                    public Boolean visitInteger(int i) {
+                        return i == intToMatch;
+                    }
+                });
+            }
+
+            @Override
+            public String toString() {
+                return "" + intToMatch;
             }
         };
     }
@@ -124,6 +175,11 @@ public class Patterns {
                         return false;
                     }
                 });
+            }
+
+            @Override
+            public String toString() {
+                return "(" + listPattern + ")";
             }
         };
     }

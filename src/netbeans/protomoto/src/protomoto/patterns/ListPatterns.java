@@ -1,7 +1,9 @@
 package protomoto.patterns;
 
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.stream.Collectors;
 import protomoto.ast.ASTCell;
 import protomoto.ast.ASTList;
 
@@ -19,6 +21,11 @@ public class ListPatterns {
                 
                 return false;
             }
+
+            @Override
+            public String toString() {
+                return pattern + ":" + name;
+            }
         };
     }
     
@@ -32,6 +39,11 @@ public class ListPatterns {
                 }
                 
                 return false;
+            }
+
+            @Override
+            public String toString() {
+                return pattern.toString();
             }
         };
     }
@@ -53,6 +65,11 @@ public class ListPatterns {
                 
                 return true;
             }
+
+            @Override
+            public String toString() {
+                return pattern + "*";
+            }
         };
     }
     
@@ -69,6 +86,11 @@ public class ListPatterns {
                 }
                 
                 return true;
+            }
+
+            @Override
+            public String toString() {
+                return Arrays.asList(patterns).stream().map(p -> p.toString()).collect(Collectors.joining(" "));
             }
         };
     }

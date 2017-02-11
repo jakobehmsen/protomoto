@@ -2,7 +2,10 @@ package protomoto;
 
 import java.io.IOException;
 import java.util.Hashtable;
+import java.util.List;
+import org.jparsec.Parser;
 import protomoto.ast.ASTCell;
+import protomoto.ast.ASTInteger;
 import protomoto.ast.ASTList;
 import protomoto.ast.ASTString;
 import protomoto.patterns.ListPatterns;
@@ -21,11 +24,31 @@ public class Main {
             ListPatterns.capture("a", ListPatterns.lazy(ListPatterns.single(Patterns.any())))
         ));
         
-        ASTCell c = new ASTList(new ASTCell[]{
-            new ASTList(new ASTCell[]{new ASTString("Beginning")}),
-            new ASTList(new ASTCell[]{new ASTString("var"), new ASTString("x"), new ASTString("someValue")}),
-            new ASTList(new ASTCell[]{new ASTString("End")}),
+        Pattern pattern = protomoto.patterns.PatternParser.PARSER.parse("(_*:b (var _:n _:v) _*:a)");
+        
+        System.out.println("pattern=" + pattern);
+        
+        p = pattern;
+        
+        Parser<ASTCell> astCellParser = AstParser.create(new AstFactory<ASTCell>() {
+            @Override
+            public ASTCell createList(List<ASTCell> items) {
+                return new ASTList(items.toArray(new ASTCell[items.size()]));
+            }
+
+            @Override
+            public ASTCell createString(String str) {
+                return new ASTString(str);
+            }
+
+            @Override
+            public ASTCell createInt(int i) {
+                return new ASTInteger(i);
+            }
         });
+        
+        ASTCell c = astCellParser.parse("(Beginning (var x someValue) End)");
+        
         Hashtable<String, ASTCell> captures = new Hashtable<>();
         p.matches(c, captures);
         
@@ -65,7 +88,24 @@ public class Main {
             Instructions.finish()
         };*/
         
-        Cell program = AstParser.PARSER.parse(
+        Parser<Cell> cellParser = AstParser.create(new AstFactory<Cell>() {
+            @Override
+            public Cell createList(List<Cell> items) {
+                return new ArrayCell(items.toArray(new Cell[items.size()]));
+            }
+
+            @Override
+            public Cell createString(String str) {
+                return new StringCell(str);
+            }
+
+            @Override
+            public Cell createInt(int i) {
+                return new IntegerCell(i);
+            }
+        });
+        
+        Cell program = cellParser.parse(
             "(var arr (array_new (consti 3)))\n" +
             "(array_set (get arr) (consti 0) (consti 5))\n" +
             "(array_set (get arr) (consti 1) (consti 7))\n" +
