@@ -11,9 +11,9 @@ public class ListPatterns {
     public static ListPattern capture(String name, ListPattern pattern) {
         return new ListPattern() {
             @Override
-            public boolean matches(ListStream items, Map<String, ASTCell> captures, ListPattern next) {
+            public boolean matches(Environment environment, ListStream items, Map<String, ASTCell> captures, ListPattern next) {
                 ListStreamPosition position = items.position();
-                if(pattern.matches(items, captures, next)) {
+                if(pattern.matches(environment, items, captures, next)) {
                     ASTCell[] consumed = position.consumed();
                     captures.put(name, new ASTList(consumed));
                     return true;
@@ -32,8 +32,8 @@ public class ListPatterns {
     public static ListPattern single(Pattern pattern) {
         return new ListPattern() {
             @Override
-            public boolean matches(ListStream items, Map<String, ASTCell> captures, ListPattern next) {
-                if(items.remaining() > 0 && pattern.matches(items.peek(), captures)) {
+            public boolean matches(Environment environment, ListStream items, Map<String, ASTCell> captures, ListPattern next) {
+                if(items.remaining() > 0 && pattern.matches(environment, items.peek(), captures)) {
                     items.consume();
                     return true;
                 }
@@ -51,12 +51,12 @@ public class ListPatterns {
     public static ListPattern lazy(ListPattern pattern) {
         return new ListPattern() {
             @Override
-            public boolean matches(ListStream items, Map<String, ASTCell> captures, ListPattern next) {
+            public boolean matches(Environment environment, ListStream items, Map<String, ASTCell> captures, ListPattern next) {
                 // Next should capture into dummy map
                 Hashtable<String, ASTCell> dummyCaptures = new Hashtable<>();
                 ListStream dummyItems = items.sublist();
-                while(next == null || !next.matches(dummyItems, dummyCaptures, null)) {
-                    if(!pattern.matches(items, captures, null)) {
+                while(next == null || !next.matches(environment, dummyItems, dummyCaptures, null)) {
+                    if(!pattern.matches(environment, items, captures, null)) {
                         break;
                     }
                     
@@ -76,11 +76,11 @@ public class ListPatterns {
     public static ListPattern sequence(ListPattern... patterns) {
         return new ListPattern() {
             @Override
-            public boolean matches(ListStream items, Map<String, ASTCell> captures, ListPattern next) {
+            public boolean matches(Environment environment, ListStream items, Map<String, ASTCell> captures, ListPattern next) {
                 for (int i = 0; i < patterns.length; i++) {
                     ListPattern pattern = patterns[i];
                     ListPattern nextInSequence = i + 1 < patterns.length ? patterns[i + 1] : null; 
-                    if (!pattern.matches(items, captures, nextInSequence)) {
+                    if (!pattern.matches(environment, items, captures, nextInSequence)) {
                         return false;
                     }
                 }

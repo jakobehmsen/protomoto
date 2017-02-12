@@ -1,35 +1,34 @@
 package protomoto.patterns;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Optional;
 import protomoto.ast.ASTCell;
-import protomoto.ast.ASTList;
 
 public class RuleMap implements Reducer {
-    private static class PatternAction {
-        public Pattern pattern;
-        public Action action;
-    }
-    
-    private List<PatternAction> patternActions;
+    private List<PatternAction> patternActions = new ArrayList<>();
     
     public void bind(Pattern pattern, Action action) {
-        
-    }
-    
-    private ASTCell newList(ASTCell[] items) {
-        return new ASTList(items);
+        patternActions.add(new PatternAction(pattern, action));
     }
     
     @Override
     public ASTCell reduce(ASTCell cell) {
-        Hashtable<String, ASTCell> captures = new Hashtable<>();
+        while(true) {
+            ASTCell c = cell;
+            Hashtable<String, ASTCell> captures = new Hashtable<>();
+            Optional<PatternAction> patternAction = patternActions.stream().filter(p -> {
+                captures.clear();
+                return p.pattern.matches(null, c, captures);
+            }).findFirst();
+            
+            if(!patternAction.isPresent())
+                break;
+            
+            cell = patternAction.get().action.process(this, captures);
+        }
         
-        Action action = patternActions.stream().filter(p -> {
-            captures.clear();
-            return p.pattern.matches(cell, captures);
-        }).findFirst().get().action;
-        
-        return action.process(this, captures);
+        return cell;
     }
 }

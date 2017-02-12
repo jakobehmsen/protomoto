@@ -1,16 +1,23 @@
 package protomoto;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import org.jparsec.Parser;
 import protomoto.ast.ASTCell;
+import protomoto.ast.ASTCellVisitor;
 import protomoto.ast.ASTInteger;
 import protomoto.ast.ASTList;
 import protomoto.ast.ASTString;
+import protomoto.patterns.Action;
 import protomoto.patterns.ListPatterns;
 import protomoto.patterns.Pattern;
 import protomoto.patterns.Patterns;
+import protomoto.patterns.Reducer;
+import protomoto.patterns.RuleMap;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -24,7 +31,36 @@ public class Main {
             ListPatterns.capture("a", ListPatterns.lazy(ListPatterns.single(Patterns.any())))
         ));
         
+        // (_*:b ("var" _:n _:v) _*:e) => (("var" $n) $b ("set" _:n $v) $e)
+        // Always list pattern capture, that is consumed are put into a list
+        // Only for *, this should be done.
         Pattern pattern = protomoto.patterns.PatternParser.PARSER.parse("(_*:b (var _:n _:v) _*:a)");
+        
+        RuleMap rm = new RuleMap();
+        
+        rm.bind(pattern, new Action() {
+            @Override
+            public ASTCell process(Reducer reducer, Map<String, ASTCell> captured) {
+                // (("var" $n) $s ("set" _:n $v) $e)
+                
+                ASTCell b = captured.get("b");
+                ASTCell n = captured.get("n");
+                ASTCell v = captured.get("v");
+                ASTCell a = captured.get("a");
+                
+                ArrayList<ASTCell> list = new ArrayList<>();
+                
+                list.add(new ASTList(new ASTCell[]{new ASTString("var"), n}));
+                
+                list.addAll(Arrays.asList(((ASTList)b).items));
+                
+                list.add(new ASTList(new ASTCell[]{new ASTString("set"), n, v}));
+                
+                list.addAll(Arrays.asList(((ASTList)a).items));
+                
+                return new ASTList(list.toArray(new ASTCell[list.size()]));
+            }
+        });
         
         System.out.println("pattern=" + pattern);
         
@@ -47,10 +83,12 @@ public class Main {
             }
         });
         
-        ASTCell c = astCellParser.parse("(Beginning (var x someValue) End)");
+        ASTCell c = astCellParser.parse("(Beginning) (var x someValue) (End)");
         
-        Hashtable<String, ASTCell> captures = new Hashtable<>();
-        p.matches(c, captures);
+        c = rm.reduce(c);
+        /*Hashtable<String, ASTCell> captures = new Hashtable<>();
+        rm.reduce(c);
+        p.matches(null, c, captures);*/
         
         Environment environment = new Environment();
         

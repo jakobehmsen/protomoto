@@ -7,10 +7,26 @@ import protomoto.ast.ASTCell;
 import protomoto.ast.ASTCellVisitor;
 
 public class Patterns {
+    public static Pattern ref(String name) {
+        return new Pattern() {
+            @Override
+            public boolean matches(Environment environment, ASTCell cell, Map<String, ASTCell> captures) {
+                //Pattern pattern = environment.get(name);
+                //return pattern.matches(environment, cell, captures);
+                return false;
+            }
+
+            @Override
+            public String toString() {
+                return "~";
+            }
+        };
+    }
+    
     public static Pattern none() {
         return new Pattern() {
             @Override
-            public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
+            public boolean matches(Environment environment, ASTCell cell, Map<String, ASTCell> captures) {
                 return false;
             }
 
@@ -24,7 +40,7 @@ public class Patterns {
     public static Pattern any() {
         return new Pattern() {
             @Override
-            public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
+            public boolean matches(Environment environment, ASTCell cell, Map<String, ASTCell> captures) {
                 return true;
             }
 
@@ -38,8 +54,8 @@ public class Patterns {
     public static Pattern capture(Pattern pattern, String name) {
         return new Pattern() {
             @Override
-            public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
-                if(pattern.matches(cell, captures)) {
+            public boolean matches(Environment environment, ASTCell cell, Map<String, ASTCell> captures) {
+                if(pattern.matches(environment, cell, captures)) {
                     captures.put(name, cell);
                     return true;
                 }
@@ -57,7 +73,7 @@ public class Patterns {
     public static Pattern equalsString(String stringToMatch) {
         return new Pattern() {
             @Override
-            public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
+            public boolean matches(Environment environment, ASTCell cell, Map<String, ASTCell> captures) {
                 return cell.accept(new ASTCellVisitor<Boolean>() {
                     @Override
                     public Boolean visitList(ASTCell[] items) {
@@ -86,7 +102,7 @@ public class Patterns {
     public static Pattern equalsInt(int intToMatch) {
         return new Pattern() {
             @Override
-            public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
+            public boolean matches(Environment environment, ASTCell cell, Map<String, ASTCell> captures) {
                 return cell.accept(new ASTCellVisitor<Boolean>() {
                     @Override
                     public Boolean visitList(ASTCell[] items) {
@@ -156,13 +172,13 @@ public class Patterns {
     public static Pattern subsumesList(ListPattern listPattern) {
         return new Pattern() {
             @Override
-            public boolean matches(ASTCell cell, Map<String, ASTCell> captures) {
+            public boolean matches(Environment environment, ASTCell cell, Map<String, ASTCell> captures) {
                 return cell.accept(new ASTCellVisitor<Boolean>() {
                     @Override
                     public Boolean visitList(ASTCell[] items) {
                         ListStream listStream = listStream(items, 0);
                         
-                        return listPattern.matches(listStream, captures, null);
+                        return listPattern.matches(environment, listStream, captures, null);
                     }
 
                     @Override
