@@ -8,13 +8,6 @@ public class Main {
     public static void main(String[] args) throws IOException {        
         Environment environment = new Environment();
         
-        environment.getIntegerProto().put(environment.getSymbolCode("+"), new BehaviorCell(new Instruction[]{
-            Instructions.load(0),
-            Instructions.load(1),
-            Instructions.addi(),
-            Instructions.respond()
-        }, 0));
-        
         Parser<Cell> cellParser = AstParser.create(new AstFactory<Cell>() {
             @Override
             public Cell createList(List<Cell> items) {
@@ -33,9 +26,11 @@ public class Main {
         });
         
         Cell program = cellParser.parse(
+            "(set_slot (get_slot (environment) 'Integer') '-' (behavior (other) (subi (self) (get other))))\n" +
             "(set_slot (environment) someField (consts 'ABC'))\n" +
             "(set someClone (clone (environment)))\n" +
-            "(get_slot (get someClone) someField)\n"
+            "(get_slot (get someClone) someField)\n" +
+            "(send (consti 5) '-' (consti 12))\n"
         );
         
         /*Cell program = cellParser.parse(

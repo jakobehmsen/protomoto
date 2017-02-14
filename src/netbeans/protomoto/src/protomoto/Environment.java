@@ -105,6 +105,7 @@ public class Environment {
         mappers.put(createString("environment"), ASTMappers.nnaryExpression(Instructions.environment(), 0));
         
         mappers.put(createString("array_new"), ASTMappers.nnaryExpression(Instructions.arrayNew(), 1));
+        mappers.put(createString("self"), ASTMappers.nnaryExpression(Instructions.load(0), 0));
         
         mappers.put(createString("send"), new ASTMapper() {
             @Override
