@@ -162,7 +162,6 @@ public class Environment {
                 }
             }
         });
-        // Define array_set
         mappers.put(createString("array_set"), new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
