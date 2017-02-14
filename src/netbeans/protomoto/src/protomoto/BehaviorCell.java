@@ -32,4 +32,9 @@ public class BehaviorCell extends AbstractCell {
         
         return frame;
     }
+
+    @Override
+    public Cell cloneCell() {
+        return new BehaviorCell(instructions, variableCount);
+    }
 }

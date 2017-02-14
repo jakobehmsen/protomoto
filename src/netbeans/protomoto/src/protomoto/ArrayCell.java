@@ -35,4 +35,10 @@ public class ArrayCell extends AbstractCell {
     public int length() {
         return items.length;
     }
+
+    @Override
+    public Cell cloneCell() {
+        Cell[] itemsCopy = Arrays.copyOf(items, items.length);
+        return new ArrayCell(itemsCopy);
+    }
 }

@@ -31,4 +31,9 @@ public class StringCell extends AbstractCell {
     public String toString() {
         return string;
     }
+
+    @Override
+    public Cell cloneCell() {
+        return new StringCell(string);
+    }
 }

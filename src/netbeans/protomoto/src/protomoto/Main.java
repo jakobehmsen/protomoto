@@ -33,13 +33,18 @@ public class Main {
         });
         
         Cell program = cellParser.parse(
-            "(var arr (array_new (consti 3)))\n" +
+            "(set_slot (environment) someField (consts 'ABC'))\n" +
+            "(set someClone (clone (environment)))\n" +
+            "(get_slot (get someClone) someField)\n"
+        );
+        
+        /*Cell program = cellParser.parse(
+            "(set arr (array_new (consti 3)))\n" +
             "(array_set (get arr) (consti 0) (consti 5))\n" +
             "(array_set (get arr) (consti 1) (consti 7))\n" +
             "(array_set (get arr) (consti 2) (consti 9))\n" +
             "(get arr)"
-            //"(array_length (get arr))"
-        );
+        );*/
         
         /*Cell program = AstParser.PARSER.parse(
             "(set_slot (environment) someValue (consts 'ABC'))\n" +

@@ -5,5 +5,6 @@ public interface Cell {
     BehaviorCell resolveBehavior(Environment environment, int symbolCode);
     BehaviorCell resolveEvaluateBehavior();
     void put(int symbolCode, Cell c);
-    Cell get(int symbolCode);
+    Cell get(Environment environment, int symbolCode);
+    Cell cloneCell();
 }

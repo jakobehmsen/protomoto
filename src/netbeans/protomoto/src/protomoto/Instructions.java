@@ -125,7 +125,19 @@ public class Instructions {
     }
     
     public static Instruction getSlot(int symbolCode) {
-        return unaryExpr((self) -> self.get(symbolCode));
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                Cell self = frame.pop();
+                frame.push(self.get(frame.getEnvironment(), symbolCode));
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "getSlot:" + symbolCode;
+            }
+        };
     }
     
     public static Instruction newBehavior() {
@@ -170,7 +182,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "newArray";
+                return "arrayLength";
             }
         };
     }
@@ -346,6 +358,18 @@ public class Instructions {
             @Override
             public void execute(Frame frame) {
                 frame.push(behavior);
+                frame.incIP();
+            }
+        };
+    }
+
+    public static Instruction cloneCell() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                Cell proto = frame.pop();
+                Cell clone = proto.cloneCell();
+                frame.push(clone);
                 frame.incIP();
             }
         };

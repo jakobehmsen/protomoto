@@ -74,7 +74,7 @@ public class Environment {
     public BehaviorCell createBehavior(String[] parameters, Cell ast) {
         MetaFrame metaFrame = new MetaFrame();
         for (String parameter: parameters) {
-            metaFrame.declareVar(parameter);
+            metaFrame.ensuredVarDeclared(parameter);
         }
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.respond()));
         
@@ -128,6 +128,8 @@ public class Environment {
                 }
             }
         });
+        
+        mappers.put(createString("clone"), ASTMappers.nnaryExpression(Instructions.cloneCell(), 1));
         mappers.put(createString("set_slot"), new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
@@ -202,7 +204,7 @@ public class Environment {
             }
         });
         
-        mappers.put(createString("var"), new ASTMapper() {
+        mappers.put(createString("set"), new ASTMapper() {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
                 StringCell name = (StringCell) ast.get(1);
@@ -218,7 +220,7 @@ public class Environment {
                     
                     @Override
                     public void prepare(MetaFrame metaFrame) { 
-                        metaFrame.declareVar(name.string);
+                        metaFrame.ensuredVarDeclared(name.string);
                     }
 
                     @Override

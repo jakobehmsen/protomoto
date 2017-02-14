@@ -11,8 +11,14 @@ public abstract class AbstractCell implements Cell {
     }
 
     @Override
-    public Cell get(int symbolCode) {
-        return behavior.get(symbolCode);
+    public Cell get(Environment environment, int symbolCode) {
+        Cell c = behavior.get(symbolCode);
+        if(c != null)
+            return c;
+        Cell proto = resolveProto(environment);
+        if(proto != null)
+            return proto.get(environment, symbolCode);
+        return null; // How to handle?
     }
     
     public BehaviorCell resolveBehavior(Environment environment, int symbolCode) {

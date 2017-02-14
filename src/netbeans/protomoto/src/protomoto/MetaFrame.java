@@ -6,7 +6,7 @@ public class MetaFrame {
     private int offset = 1; // Implicit room for self
     private Hashtable<String, Integer> nameToIndexMap = new Hashtable<>();
 
-    public void declareVar(String name) {
+    public void ensuredVarDeclared(String name) {
         int index = offset + nameToIndexMap.size();
         nameToIndexMap.put(name, index);
     }
