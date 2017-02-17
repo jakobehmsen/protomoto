@@ -1,9 +1,11 @@
 package protomoto;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class Environment {
     private DefaultCell anyProto;
@@ -12,6 +14,7 @@ public class Environment {
     private DefaultCell arrayProto;
     private DefaultCell stringProto;
     private DefaultCell nil;
+    private DefaultCell signalProto;
     private Hashtable<String, Integer> stringToSymbolCode = new Hashtable<>();
     
     public Environment() {
@@ -27,12 +30,16 @@ public class Environment {
         anyProto.put(getSymbolCode("Array"), arrayProto);
         anyProto.put(getSymbolCode("String"), stringProto);
         nil.put(getSymbolCode("Nil"), nil);
+        signalProto.put(getSymbolCode("Signal"), nil);
     }
 
     public Evaluator createEvaluator(Cell ast) {
         Evaluator evaluator = new Evaluator(this);
         MetaFrame metaFrame = new MetaFrame();
-        Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish()));
+        ArrayList<String> errors = new ArrayList<>();
+        Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish()), errors);
+        if(errors.size() > 0)
+            throw new IllegalArgumentException("Compile errors:\n" + errors.stream().collect(Collectors.joining("\n")));
         BehaviorCell behavior = new BehaviorCell(instructions, metaFrame.variableCount());
         Frame frame = behavior.createSendFrame(evaluator, null, 0, new Cell[]{anyProto});
         evaluator.setFrame(frame);
@@ -71,14 +78,14 @@ public class Environment {
         return nil;
     }
 
-    public BehaviorCell createBehavior(String[] parameters, Cell ast) {
+    public BehaviorCell createBehavior(String[] parameters, Cell ast, List<String> errors) {
         MetaFrame metaFrame = new MetaFrame();
         for (String parameter: parameters) {
-            metaFrame.ensuredVarDeclared(parameter);
+            metaFrame.declareVar(parameter);
         }
-        Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.respond()));
+        Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.respond()), errors);
         
-        return new BehaviorCell(instructions, metaFrame.variableCount() - parameters.length);
+        return instructions != null ? new BehaviorCell(instructions, metaFrame.variableCount() - parameters.length) : null;
     }
 
     public ArrayCell createArray(int length) {
@@ -91,7 +98,7 @@ public class Environment {
         return new StringCell(string);
     }
     
-    public Instruction[] getInstructions(MetaFrame metaFrame, Cell ast, InstructionEmitter endEmitter) {
+    public Instruction[] getInstructions(MetaFrame metaFrame, Cell ast, InstructionEmitter endEmitter, List<String> errors) {
         Hashtable<Cell, ASTMapper> mappers = new Hashtable<>();
         
         mappers.put(createString("consti"), ASTMappers.<IntegerCell>constExpression(i -> Instructions.pushi(i.getIntValue())));
@@ -109,7 +116,7 @@ public class Environment {
         
         mappers.put(createString("send"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
@@ -133,7 +140,7 @@ public class Environment {
         mappers.put(createString("clone"), ASTMappers.nnaryExpression(Instructions.cloneCell(), 1));
         mappers.put(createString("set_slot"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
@@ -151,7 +158,7 @@ public class Environment {
         });
         mappers.put(createString("get_slot"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
@@ -167,7 +174,7 @@ public class Environment {
         });
         mappers.put(createString("array_set"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 Cell index = ast.get(2);
                 Cell value = ast.get(3);
@@ -187,7 +194,7 @@ public class Environment {
         mappers.put(createString("array_length"), ASTMappers.nnaryExpression(Instructions.arrayLength(), 1));
         mappers.put(createString("behavior"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 if(asExpression) {
                     ArrayCell parametersCell = (ArrayCell)ast.get(1);
                     String[] parameters = new String[parametersCell.length()];
@@ -198,16 +205,16 @@ public class Environment {
                     
                     Cell body = ast.get(2);
 
-                    BehaviorCell behavior = createBehavior(parameters, body);
+                    BehaviorCell behavior = createBehavior(parameters, body, errors);
                     
                     emitters.add(InstructionEmitters.single(Instructions.pushb(behavior)));
                 }
             }
         });
         
-        mappers.put(createString("set"), new ASTMapper() {
+        mappers.put(createString("var"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 StringCell name = (StringCell) ast.get(1);
                 Cell value = (Cell) ast.get(2);
                 
@@ -220,8 +227,43 @@ public class Environment {
                     int index;
                     
                     @Override
-                    public void prepare(MetaFrame metaFrame) { 
-                        metaFrame.ensuredVarDeclared(name.string);
+                    public void prepare(MetaFrame metaFrame) {
+                        if(metaFrame.indexOf(name.string) != -1) {
+                            errorCollector.accept("'" + name.string + "' is already declared.");
+                            return;
+                        }
+                        
+                        metaFrame.declareVar(name.string);
+                    }
+
+                    @Override
+                    public void emit(MetaFrame metaFrame, List<Instruction> instructions) {
+                        int index = metaFrame.indexOf(name.string);
+                        instructions.add(Instructions.store(index));
+                    }
+                });
+            }
+        });
+        
+        mappers.put(createString("set"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+                StringCell name = (StringCell) ast.get(1);
+                Cell value = (Cell) ast.get(2);
+                
+                translateChild.accept(value);
+                
+                if(asExpression)
+                    emitters.add(InstructionEmitters.single(Instructions.dup()));
+                
+                emitters.add(new InstructionEmitter() {
+                    int index;
+                    
+                    @Override
+                    public void prepare(MetaFrame metaFrame) {
+                        if(metaFrame.indexOf(name.string) == -1) {
+                            errorCollector.accept("'" + name.string + "' is undeclared.");
+                        }
                     }
 
                     @Override
@@ -235,7 +277,7 @@ public class Environment {
         
         mappers.put(createString("get"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 StringCell name = (StringCell) ast.get(1);
                 
                 emitters.add(new InstructionEmitter() {
@@ -251,6 +293,10 @@ public class Environment {
             }
         });
         
-        return InstructionMapper.fromAST(metaFrame, ast, mappers, endEmitter);
+        return InstructionMapper.fromAST(metaFrame, ast, mappers, endEmitter, errors);
+    }
+
+    public Cell getSignalProto() {
+        return signalProto;
     }
 }

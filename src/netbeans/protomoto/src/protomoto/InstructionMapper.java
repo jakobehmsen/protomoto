@@ -3,15 +3,20 @@ package protomoto;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class InstructionMapper {
-    public static Instruction[] fromAST(MetaFrame metaFrame, Cell ast, Map<Cell, ASTMapper> mappers, InstructionEmitter endEmitter) {
+    public static Instruction[] fromAST(MetaFrame metaFrame, Cell ast, Map<Cell, ASTMapper> mappers, InstructionEmitter endEmitter, List<String> errors) {
         ArrayList<InstructionEmitter> emitters = new ArrayList<>();
         
-        fromAST(ast, emitters, true, mappers);
+        fromAST(ast, emitters, true, mappers, error -> errors.add(error));
         emitters.add(endEmitter);
         
         emitters.forEach(e -> e.prepare(metaFrame));
+        
+        if(errors.size() > 0) {
+            return null;
+        }
         
         ArrayList<Instruction> instructions = new ArrayList<>();
         
@@ -20,7 +25,7 @@ public class InstructionMapper {
         return instructions.toArray(new Instruction[instructions.size()]);
     }
     
-    public static void fromAST(Cell ast, List<InstructionEmitter> emitters, boolean asExpression, Map<Cell, ASTMapper> mappers) {
+    public static void fromAST(Cell ast, List<InstructionEmitter> emitters, boolean asExpression, Map<Cell, ASTMapper> mappers, Consumer<String> errorCollector) {
         if(ast instanceof ArrayCell) {
             ArrayCell arrayAst = (ArrayCell)ast;
             if(arrayAst.length() > 0 && arrayAst.get(0) instanceof StringCell) {
@@ -30,13 +35,13 @@ public class InstructionMapper {
                 if(mapper == null)
                     throw new IllegalArgumentException("Cannot find mapper for " + astType);
                 
-                mapper.translate(arrayAst, emitters, asExpression, child -> fromAST(child, emitters, true, mappers));
+                mapper.translate(arrayAst, emitters, asExpression, child -> fromAST(child, emitters, true, mappers, errorCollector), errorCollector);
             } else {
                 // What if empty?
                 
                 for(int i = 0; i < arrayAst.length(); i++) {
                     boolean childAsExpression = i == arrayAst.length() - 1;
-                    fromAST(arrayAst.get(i), emitters, childAsExpression, mappers);
+                    fromAST(arrayAst.get(i), emitters, childAsExpression, mappers, errorCollector);
                 }
             }
         } else {

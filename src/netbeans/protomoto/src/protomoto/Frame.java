@@ -1,5 +1,6 @@
 package protomoto;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
@@ -114,8 +115,26 @@ public class Frame {
 
     public void newBehavior() {
         Cell ast = stack.pop();
-        BehaviorCell behavior = evaluator.getEnvironment().createBehavior(null, ast);
-        stack.push(behavior);
+        ArrayList<String> errors = new ArrayList<>();
+        BehaviorCell behavior = evaluator.getEnvironment().createBehavior(null, ast, errors);
+        if(errors.size() > 0) {
+            ArrayCell errorsArray = getEnvironment().createArray(errors.size());
+            for(int i = 0; i < errors.size(); i++)
+                errorsArray.set(i, getEnvironment().createString(errors.get(i)));
+            int symbolCode = getEnvironment().getSymbolCode("compileErrors");
+            Cell signal = getEnvironment().getSignalProto().cloneCell();
+            signal.put(symbolCode, errorsArray);
+            sendSignal(signal);
+        } else {
+            stack.push(behavior);
+        }
+    }
+
+    private void sendSignal(Cell signal) {
+        BehaviorCell signalBehavior = signal.resolveBehavior(getEnvironment(), getEnvironment().getSymbolCode("send"));
+        Cell self = stack.get(0);
+        Frame signalFrame = signalBehavior.createSendFrame(evaluator, this, 1, new Cell[]{self});
+        evaluator.setFrame(signalFrame);
     }
 
     public void newArray(int length) {
