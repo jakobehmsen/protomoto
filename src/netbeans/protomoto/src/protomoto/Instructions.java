@@ -88,7 +88,11 @@ public class Instructions {
         };
     }
     
-    public static Instruction binaryIntExpr(BiFunction<Integer, Integer, Integer> intFunction) {
+    private interface BinaryInstruction<T> {
+        void execute(Frame frame, T lhs, T rhs);
+    }
+    
+    public static Instruction binaryIntExpr(BinaryInstruction<Integer> intFunction) {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
@@ -97,27 +101,41 @@ public class Instructions {
                 frame.popInto(0, 2, buffer);
                 int lhs = buffer[0].getIntValue();
                 int rhs = buffer[1].getIntValue();
-                int result = intFunction.apply(lhs, rhs);
-                frame.pushi(result);
-                frame.incIP();
+                intFunction.execute(frame, lhs, rhs);
             }
         };
     }
     
     public static Instruction addi() {
-        return binaryIntExpr((lhs, rhs) -> lhs + rhs);
+        return binaryIntExpr((frame, lhs, rhs) -> {
+            frame.pushi(lhs + rhs);
+            frame.incIP();
+        });
     }
     
     public static Instruction subi() {
-        return binaryIntExpr((lhs, rhs) -> lhs - rhs);
+        return binaryIntExpr((frame, lhs, rhs) -> {
+            frame.pushi(lhs - rhs);
+            frame.incIP();
+        });
     }
     
     public static Instruction muli() {
-        return binaryIntExpr((lhs, rhs) -> lhs * rhs);
+        return binaryIntExpr((frame, lhs, rhs) -> {
+            frame.pushi(lhs * rhs);
+            frame.incIP();
+        });
     }
     
     public static Instruction divi() {
-        return binaryIntExpr((lhs, rhs) -> lhs / rhs);
+        return binaryIntExpr((frame, lhs, rhs) -> {
+            if(rhs > 0) {
+                frame.pushi(lhs / rhs);
+                frame.incIP();
+            } else {
+                frame.primitiveErrorOccurred("Division by zero.");
+            }
+        });
     }
     
     public static Instruction setSlot(int symbolCode) {
@@ -279,11 +297,11 @@ public class Instructions {
         };
     }
     
-    public static Instruction finish() {
+    public static Instruction finish(int returnCode) {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
-                frame.finish();
+                frame.finish(returnCode);
             }
 
             @Override

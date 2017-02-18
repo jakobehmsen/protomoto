@@ -3,6 +3,7 @@ package protomoto;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 public class Frame {
     private Evaluator evaluator;
@@ -80,8 +81,8 @@ public class Frame {
         instructions[ip].execute(this);
     }
 
-    public void finish() {
-        evaluator.finish();
+    public void finish(int returnCode) {
+        evaluator.finish(returnCode);
     }
 
     public int peekInto(int offset, int count, Cell[] buffer) {
@@ -118,22 +119,24 @@ public class Frame {
         ArrayList<String> errors = new ArrayList<>();
         BehaviorCell behavior = evaluator.getEnvironment().createBehavior(null, ast, errors);
         if(errors.size() > 0) {
-            ArrayCell errorsArray = getEnvironment().createArray(errors.size());
-            for(int i = 0; i < errors.size(); i++)
-                errorsArray.set(i, getEnvironment().createString(errors.get(i)));
-            int symbolCode = getEnvironment().getSymbolCode("compileErrors");
-            Cell signal = getEnvironment().getSignalProto().cloneCell();
-            signal.put(symbolCode, errorsArray);
-            sendSignal(signal);
+            String errorString = "Compile error:\n" + errors.stream().collect(Collectors.joining("\n"));
+            primitiveErrorOccurred(errorString);
         } else {
             stack.push(behavior);
         }
     }
-
-    private void sendSignal(Cell signal) {
-        BehaviorCell signalBehavior = signal.resolveBehavior(getEnvironment(), getEnvironment().getSymbolCode("send"));
-        Cell self = stack.get(0);
-        Frame signalFrame = signalBehavior.createSendFrame(evaluator, this, 1, new Cell[]{self});
+    
+    public void primitiveErrorOccurred(String error) {
+        int errorOccurredSymbolCode = getEnvironment().getSymbolCode("errorOccurred");
+        send(getEnvironment().getPrimitive(), errorOccurredSymbolCode, new Cell[]{getEnvironment().createString(error)});
+    }
+    
+    public void send(Cell receiver, int symbolCode, Cell[] args) {
+        BehaviorCell behavior = receiver.resolveBehavior(getEnvironment(), symbolCode);
+        Cell[] selfAndArgs = new Cell[1 + args.length];
+        selfAndArgs[0] = receiver;
+        System.arraycopy(args, 0, selfAndArgs, 1, args.length);
+        Frame signalFrame = behavior.createSendFrame(evaluator, this, 1, selfAndArgs);
         evaluator.setFrame(signalFrame);
     }
 

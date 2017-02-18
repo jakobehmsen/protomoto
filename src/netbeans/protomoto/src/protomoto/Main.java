@@ -27,10 +27,11 @@ public class Main {
         
         Cell program = cellParser.parse(
             "(set_slot (get_slot (environment) 'Integer') '-' (behavior (other) (subi (self) (get other))))\n" +
+            "(set_slot (get_slot (environment) 'Integer') '/' (behavior (other) (divi (self) (get other))))\n" +
             "(set_slot (environment) someField (consts 'ABC'))\n" +
-            "(set someClone (clone (environment)))\n" +
+            "(var someClone (clone (environment)))\n" +
             "(get_slot (get someClone) someField)\n" +
-            "(send (consti 5) '-' (consti 12))\n"
+            "(send (consti 100) '/' (consti 0))\n"
         );
         
         /*Cell program = cellParser.parse(
@@ -81,7 +82,13 @@ public class Main {
                 proceeds = 0;
             }
         }
-        Cell response = evaluator.getResponse();
-        System.out.println(response);
+        
+        if(evaluator.getReturnCode() == 0) {
+            Cell response = evaluator.getResponse();
+            System.out.println(response);
+        } else {
+            Cell response = evaluator.getResponse();
+            System.err.println(response);
+        }
     }
 }

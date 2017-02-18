@@ -14,7 +14,7 @@ public class Environment {
     private DefaultCell arrayProto;
     private DefaultCell stringProto;
     private DefaultCell nil;
-    private DefaultCell signalProto;
+    private DefaultCell primitive;
     private Hashtable<String, Integer> stringToSymbolCode = new Hashtable<>();
     
     public Environment() {
@@ -24,20 +24,27 @@ public class Environment {
         arrayProto = new DefaultCell(anyProto);
         stringProto = new DefaultCell(anyProto);
         nil = new DefaultCell(anyProto);
+        primitive = new DefaultCell(anyProto);
         
         anyProto.put(getSymbolCode("Integer"), integerProto);
         anyProto.put(getSymbolCode("Behavior"), behaviorProto);
         anyProto.put(getSymbolCode("Array"), arrayProto);
         anyProto.put(getSymbolCode("String"), stringProto);
-        nil.put(getSymbolCode("Nil"), nil);
-        signalProto.put(getSymbolCode("Signal"), nil);
+        anyProto.put(getSymbolCode("Nil"), nil);
+        anyProto.put(getSymbolCode("Primitive"), primitive);
+        
+        int errorOccurredSymbolCode = getSymbolCode("errorOccurred");
+        primitive.put(errorOccurredSymbolCode, new BehaviorCell(new Instruction[] {
+            Instructions.load(1),
+            Instructions.finish(1)
+        }, 0));
     }
 
     public Evaluator createEvaluator(Cell ast) {
         Evaluator evaluator = new Evaluator(this);
         MetaFrame metaFrame = new MetaFrame();
         ArrayList<String> errors = new ArrayList<>();
-        Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish()), errors);
+        Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish(0)), errors);
         if(errors.size() > 0)
             throw new IllegalArgumentException("Compile errors:\n" + errors.stream().collect(Collectors.joining("\n")));
         BehaviorCell behavior = new BehaviorCell(instructions, metaFrame.variableCount());
@@ -282,7 +289,11 @@ public class Environment {
                 
                 emitters.add(new InstructionEmitter() {
                     @Override
-                    public void prepare(MetaFrame metaFrame) { }
+                    public void prepare(MetaFrame metaFrame) {
+                        if(metaFrame.indexOf(name.string) == -1) {
+                            errorCollector.accept("'" + name.string + "' is undeclared.");
+                        }
+                    }
 
                     @Override
                     public void emit(MetaFrame metaFrame, List<Instruction> instructions) {
@@ -296,7 +307,7 @@ public class Environment {
         return InstructionMapper.fromAST(metaFrame, ast, mappers, endEmitter, errors);
     }
 
-    public Cell getSignalProto() {
-        return signalProto;
+    public Cell getPrimitive() {
+        return primitive;
     }
 }

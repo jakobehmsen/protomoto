@@ -4,6 +4,7 @@ public class Evaluator {
     private Environment environment;
     private Frame currentFrame;
     private boolean run = true;
+    private int returnCode;
 
     public Evaluator(Environment environment) {
         this.environment = environment;
@@ -13,10 +14,15 @@ public class Evaluator {
         currentFrame = frame;
     }
 
-    public void finish() {
+    public void finish(int returnCode) {
         run = false;
+        this.returnCode = returnCode;
     }
 
+    public int getReturnCode() {
+        return returnCode;
+    }
+    
     public void proceed() {
         currentFrame.evaluate();
     }
