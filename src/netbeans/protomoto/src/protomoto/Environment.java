@@ -13,6 +13,7 @@ public class Environment {
     private DefaultCell behaviorProto;
     private DefaultCell arrayProto;
     private DefaultCell stringProto;
+    private DefaultCell frameProto;
     private DefaultCell nil;
     private DefaultCell primitive;
     private Hashtable<String, Integer> stringToSymbolCode = new Hashtable<>();
@@ -23,6 +24,7 @@ public class Environment {
         behaviorProto = new DefaultCell(anyProto);
         arrayProto = new DefaultCell(anyProto);
         stringProto = new DefaultCell(anyProto);
+        frameProto = new DefaultCell(anyProto);
         nil = new DefaultCell(anyProto);
         primitive = new DefaultCell(anyProto);
         
@@ -30,6 +32,7 @@ public class Environment {
         anyProto.put(getSymbolCode("Behavior"), behaviorProto);
         anyProto.put(getSymbolCode("Array"), arrayProto);
         anyProto.put(getSymbolCode("String"), stringProto);
+        anyProto.put(getSymbolCode("Frame"), frameProto);
         anyProto.put(getSymbolCode("Nil"), nil);
         anyProto.put(getSymbolCode("Primitive"), primitive);
         
@@ -117,6 +120,7 @@ public class Environment {
         mappers.put(createString("divi"), ASTMappers.binaryExpression(Instructions.divi()));
         
         mappers.put(createString("environment"), ASTMappers.nnaryExpression(Instructions.environment(), 0));
+        mappers.put(createString("this_frame"), ASTMappers.nnaryExpression(Instructions.thisFrame(), 0));
         
         mappers.put(createString("array_new"), ASTMappers.nnaryExpression(Instructions.arrayNew(), 1));
         mappers.put(createString("self"), ASTMappers.nnaryExpression(Instructions.load(0), 0));
@@ -309,5 +313,9 @@ public class Environment {
 
     public Cell getPrimitive() {
         return primitive;
+    }
+
+    public Cell getFrameProto() {
+        return frameProto;
     }
 }

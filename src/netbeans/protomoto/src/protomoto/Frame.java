@@ -1,11 +1,12 @@
 package protomoto;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
-public class Frame {
+public class Frame extends AbstractCell {
     private Evaluator evaluator;
     private Frame sender;
     private Instruction[] instructions;
@@ -173,5 +174,25 @@ public class Frame {
         List<Cell> items = this.stack.subList(start, end);
         target.stack.addAll(items);
         this.stack.subList(start, end).clear();
+    }
+
+    @Override
+    public Cell resolveProto(Environment environment) {
+        return environment.getFrameProto();
+    }
+
+    @Override
+    public BehaviorCell resolveEvaluateBehavior() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public Cell cloneCell() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(instructions);// + "/" + stack.toString();
     }
 }

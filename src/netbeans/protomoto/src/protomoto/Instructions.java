@@ -75,7 +75,7 @@ public class Instructions {
         };
     }
     
-    public static Instruction binaryMod(BiConsumer<Cell, Cell> mod) {
+    public static Instruction binaryMod(BiConsumer<Cell, Cell> mod, String description) {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
@@ -85,6 +85,11 @@ public class Instructions {
                 mod.accept(buffer[0], buffer[1]);
                 frame.incIP();
             }
+
+            @Override
+            public String toString() {
+                return description;
+            }
         };
     }
     
@@ -92,7 +97,7 @@ public class Instructions {
         void execute(Frame frame, T lhs, T rhs);
     }
     
-    public static Instruction binaryIntExpr(BinaryInstruction<Integer> intFunction) {
+    public static Instruction binaryIntExpr(BinaryInstruction<Integer> intFunction, String description) {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
@@ -103,6 +108,11 @@ public class Instructions {
                 int rhs = buffer[1].getIntValue();
                 intFunction.execute(frame, lhs, rhs);
             }
+
+            @Override
+            public String toString() {
+                return description;
+            }
         };
     }
     
@@ -110,21 +120,21 @@ public class Instructions {
         return binaryIntExpr((frame, lhs, rhs) -> {
             frame.pushi(lhs + rhs);
             frame.incIP();
-        });
+        }, "addi");
     }
     
     public static Instruction subi() {
         return binaryIntExpr((frame, lhs, rhs) -> {
             frame.pushi(lhs - rhs);
             frame.incIP();
-        });
+        }, "subi");
     }
     
     public static Instruction muli() {
         return binaryIntExpr((frame, lhs, rhs) -> {
             frame.pushi(lhs * rhs);
             frame.incIP();
-        });
+        }, "muli");
     }
     
     public static Instruction divi() {
@@ -135,11 +145,11 @@ public class Instructions {
             } else {
                 frame.primitiveErrorOccurred("Division by zero.");
             }
-        });
+        }, "divi");
     }
     
     public static Instruction setSlot(int symbolCode) {
-        return binaryMod((self, value) -> self.put(symbolCode, value));
+        return binaryMod((self, value) -> self.put(symbolCode, value), "set_slot:" + symbolCode);
     }
     
     public static Instruction getSlot(int symbolCode) {
@@ -366,7 +376,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "pop";
+                return "environment";
             }
         };
     }
@@ -377,6 +387,11 @@ public class Instructions {
             public void execute(Frame frame) {
                 frame.push(behavior);
                 frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "pushb";
             }
         };
     }
@@ -389,6 +404,26 @@ public class Instructions {
                 Cell clone = proto.cloneCell();
                 frame.push(clone);
                 frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "clone_cell";
+            }
+        };
+    }
+
+    public static Instruction thisFrame() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                frame.push(frame);
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "this_frame";
             }
         };
     }

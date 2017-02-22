@@ -21,6 +21,7 @@ public abstract class AbstractCell implements Cell {
         return null; // How to handle?
     }
     
+    @Override
     public BehaviorCell resolveBehavior(Environment environment, int symbolCode) {
         Cell c = behavior.get(symbolCode);
         if(c != null)

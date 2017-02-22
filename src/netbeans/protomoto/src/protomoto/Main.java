@@ -25,14 +25,80 @@ public class Main {
             }
         });
         
+        /*
+        
+        Primitive
+    errorOccurred: error
+
+Could it somehow be possible to create custom frames?
+
+Some for exception handling e.g.?
+
+Block
+    evaluationContext
+    context
+
+Frame
+    context >> self
+    becomeExceptionFrame:
+
+Frame // Implicitly return to outer frame?
+    nest: outer Temps: temps
+
+(var )
+
+Frame.closestExceptionFrame >> {
+    if temp at ordinal 3 is ExceptionFrameTag
+        return true;
+    else
+        return false;
+}
+
+Exception.signal: aSignal >> {
+    var closestExceptionFrame = thisContext.closestExceptionFrame;
+    test if handler (aBlock / ordinal 2/) is appropriate
+    if not, find next closest exception frame
+    repeat till no exception frame is found and handle exception by sending defaultAction to aSignal
+}
+
+ExceptionFrameTag = Any.clone
+
+Block.on: aSignal Do: aBlock >> {
+    // Something that indiciates that this is an exception frame
+    // aSignal is assigned to ordinal 1
+    // aBlock is assigned to ordinal 2
+    var magic = ExceptionFrameTag;
+    // magic is assigned to ordinal 3
+    return [
+        self.execute()
+    ]
+}
+
+
+var x = ...
+{
+    // x should be accessible
+    ...
+} on: SomeSignal Do: {
+    // x should be accessible
+    // Should be run on
+}
+        
+        */
+        
         Cell program = cellParser.parse(
+            "(set_slot (get_slot (environment) 'Frame') 'whatever' (behavior () (consts 'Heyyy')))\n" +
+            "(send (this_frame) 'whatever')\n"
+        );
+        
+        /*Cell program = cellParser.parse(
             "(set_slot (get_slot (environment) 'Integer') '-' (behavior (other) (subi (self) (get other))))\n" +
             "(set_slot (get_slot (environment) 'Integer') '/' (behavior (other) (divi (self) (get other))))\n" +
             "(set_slot (environment) someField (consts 'ABC'))\n" +
             "(var someClone (clone (environment)))\n" +
             "(get_slot (get someClone) someField)\n" +
             "(send (consti 100) '/' (consti 0))\n"
-        );
+        );*/
         
         /*Cell program = cellParser.parse(
             "(set arr (array_new (consti 3)))\n" +
