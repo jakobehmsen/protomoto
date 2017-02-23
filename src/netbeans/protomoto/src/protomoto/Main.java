@@ -8,7 +8,7 @@ public class Main {
     public static void main(String[] args) throws IOException {        
         Environment environment = new Environment();
         
-        Parser<Cell> cellParser = AstParser.create(new AstFactory<Cell>() {
+        Parser<Cell> cellParser = ASTParser.create(new ASTFactory<Cell>() {
             @Override
             public Cell createList(List<Cell> items) {
                 return new ArrayCell(items.toArray(new Cell[items.size()]));
@@ -48,10 +48,7 @@ Frame // Implicitly return to outer frame?
 (var )
 
 Frame.closestExceptionFrame >> {
-    if temp at ordinal 3 is ExceptionFrameTag
-        return true;
-    else
-        return false;
+    return outer.closestExceptionFrame()
 }
 
 Exception.signal: aSignal >> {
@@ -61,18 +58,28 @@ Exception.signal: aSignal >> {
     repeat till no exception frame is found and handle exception by sending defaultAction to aSignal
 }
 
-ExceptionFrameTag = Any.clone
-
-Block.on: aSignal Do: aBlock >> {
-    // Something that indiciates that this is an exception frame
-    // aSignal is assigned to ordinal 1
-    // aBlock is assigned to ordinal 2
-    var magic = ExceptionFrameTag;
-    // magic is assigned to ordinal 3
-    return [
-        self.execute()
-    ]
+ExceptionFrame = Frame.clone()
+ExceptionFrame.closestExceptionFrame >> {
+    return self;
 }
+ExceptionFrame.handleSignal: signal >> {
+    if(getSignal().compatibleWith(signal))
+        getHandler().execute(signal);
+    else {
+        var outerExceptionFrame = outer.closestExceptionFrame()
+        return outerExceptionFrame != nil ? outerExceptionFrame.handleSignal(signal) : signal.defaultAction()
+    }
+}
+ExceptionFrame.getSignal >> {
+    return self.get(1)
+}
+ExceptionFrame.getHandler >> {
+    return self.get(2)
+}
+        
+Block.on: aSignal Do: aBlock >> {
+    self.execute()
+} via: ExceptionFrame
 
 
 var x = ...
@@ -87,13 +94,13 @@ var x = ...
         */
         
         Cell program = cellParser.parse(
-            "(set_slot (get_slot (environment) 'Frame') 'whatever' (behavior () (consts 'Heyyy')))\n" +
+            "(set_slot (get_slot (environment) 'Frame') 'whatever' (behavior (get_slot (environment) 'Frame') () (consts 'Heyyy')))\n" +
             "(send (this_frame) 'whatever')\n"
         );
         
         /*Cell program = cellParser.parse(
-            "(set_slot (get_slot (environment) 'Integer') '-' (behavior (other) (subi (self) (get other))))\n" +
-            "(set_slot (get_slot (environment) 'Integer') '/' (behavior (other) (divi (self) (get other))))\n" +
+            "(set_slot (get_slot (environment) 'Integer') '-' (behavior (get_slot (environment) 'Frame') (other) (subi (self) (get other))))\n" +
+            "(set_slot (get_slot (environment) 'Integer') '/' (behavior (get_slot (environment) 'Frame') (other) (divi (self) (get other))))\n" +
             "(set_slot (environment) someField (consts 'ABC'))\n" +
             "(var someClone (clone (environment)))\n" +
             "(get_slot (get someClone) someField)\n" +

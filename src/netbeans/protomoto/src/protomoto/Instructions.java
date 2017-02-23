@@ -163,7 +163,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "getSlot:" + symbolCode;
+                return "get-slot:" + symbolCode;
             }
         };
     }
@@ -178,7 +178,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "newBehavior";
+                return "new-behavior";
             }
         };
     }
@@ -194,7 +194,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "newArray";
+                return "array-new";
             }
         };
     }
@@ -210,7 +210,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "arrayLength";
+                return "array-length";
             }
         };
     }
@@ -278,7 +278,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "arraySet";
+                return "array-set";
             }
         };
     }
@@ -302,7 +302,7 @@ public class Instructions {
 
             @Override
             public String toString() {
-                return "arraySet";
+                return "array-get";
             }
         };
     }
@@ -381,10 +381,12 @@ public class Instructions {
         };
     }
 
-    public static Instruction pushb(BehaviorCell behavior) {
+    public static Instruction pushb(BehaviorDescriptor behaviorDescriptor) {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
+                Cell frameProto = frame.pop();
+                BehaviorCell behavior = behaviorDescriptor.createBehavior(frameProto);
                 frame.push(behavior);
                 frame.incIP();
             }

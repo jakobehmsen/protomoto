@@ -15,7 +15,6 @@ public class Environment {
     private DefaultCell stringProto;
     private DefaultCell frameProto;
     private DefaultCell nil;
-    private DefaultCell primitive;
     private Hashtable<String, Integer> stringToSymbolCode = new Hashtable<>();
     
     public Environment() {
@@ -26,7 +25,6 @@ public class Environment {
         stringProto = new DefaultCell(anyProto);
         frameProto = new DefaultCell(anyProto);
         nil = new DefaultCell(anyProto);
-        primitive = new DefaultCell(anyProto);
         
         anyProto.put(getSymbolCode("Integer"), integerProto);
         anyProto.put(getSymbolCode("Behavior"), behaviorProto);
@@ -34,10 +32,9 @@ public class Environment {
         anyProto.put(getSymbolCode("String"), stringProto);
         anyProto.put(getSymbolCode("Frame"), frameProto);
         anyProto.put(getSymbolCode("Nil"), nil);
-        anyProto.put(getSymbolCode("Primitive"), primitive);
         
-        int errorOccurredSymbolCode = getSymbolCode("errorOccurred");
-        primitive.put(errorOccurredSymbolCode, new BehaviorCell(new Instruction[] {
+        int primitiveErrorOccurredSymbolCode = getSymbolCode("primitiveErrorOccurred");
+        frameProto.put(primitiveErrorOccurredSymbolCode, new BehaviorCell(frameProto, new Instruction[] {
             Instructions.load(1),
             Instructions.finish(1)
         }, 0));
@@ -50,7 +47,7 @@ public class Environment {
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish(0)), errors);
         if(errors.size() > 0)
             throw new IllegalArgumentException("Compile errors:\n" + errors.stream().collect(Collectors.joining("\n")));
-        BehaviorCell behavior = new BehaviorCell(instructions, metaFrame.variableCount());
+        BehaviorCell behavior = new BehaviorCell(frameProto, instructions, metaFrame.variableCount());
         Frame frame = behavior.createSendFrame(evaluator, null, 0, new Cell[]{anyProto});
         evaluator.setFrame(frame);
         return evaluator;
@@ -88,14 +85,14 @@ public class Environment {
         return nil;
     }
 
-    public BehaviorCell createBehavior(String[] parameters, Cell ast, List<String> errors) {
+    public BehaviorDescriptor createBehavior(String[] parameters, Cell ast, List<String> errors) {
         MetaFrame metaFrame = new MetaFrame();
         for (String parameter: parameters) {
             metaFrame.declareVar(parameter);
         }
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.respond()), errors);
         
-        return instructions != null ? new BehaviorCell(instructions, metaFrame.variableCount() - parameters.length) : null;
+        return instructions != null ? new BehaviorDescriptor(instructions, metaFrame.variableCount() - parameters.length) : null;
     }
 
     public ArrayCell createArray(int length) {
@@ -207,16 +204,18 @@ public class Environment {
             @Override
             public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
                 if(asExpression) {
-                    ArrayCell parametersCell = (ArrayCell)ast.get(1);
+                    Cell frameProto = ast.get(1);
+                    translateChild.accept(frameProto);
+                    ArrayCell parametersCell = (ArrayCell)ast.get(2);
                     String[] parameters = new String[parametersCell.length()];
                     
                     for(int i = 0; i < parametersCell.length(); i++) {
                         parameters[i] = ((StringCell)parametersCell.get(i)).string;
                     }
                     
-                    Cell body = ast.get(2);
+                    Cell body = ast.get(3);
 
-                    BehaviorCell behavior = createBehavior(parameters, body, errors);
+                    BehaviorDescriptor behavior = createBehavior(parameters, body, errors);
                     
                     emitters.add(InstructionEmitters.single(Instructions.pushb(behavior)));
                 }
@@ -309,10 +308,6 @@ public class Environment {
         });
         
         return InstructionMapper.fromAST(metaFrame, ast, mappers, endEmitter, errors);
-    }
-
-    public Cell getPrimitive() {
-        return primitive;
     }
 
     public Cell getFrameProto() {

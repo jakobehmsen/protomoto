@@ -1,10 +1,12 @@
 package protomoto;
 
 public class BehaviorCell extends AbstractCell {
+    private Cell frameProto;
     private Instruction[] instructions;
     private int variableCount;
 
-    public BehaviorCell(Instruction[] instructions, int variableCount) {
+    public BehaviorCell(Cell frameProto, Instruction[] instructions, int variableCount) {
+        this.frameProto = frameProto;
         this.instructions = instructions;
         this.variableCount = variableCount;
     }
@@ -20,7 +22,7 @@ public class BehaviorCell extends AbstractCell {
     }
     
     public Frame createSendFrame(Evaluator evaluator, Frame sender, int arity, Cell[] selfAndArguments) {
-        Frame frame = new Frame(evaluator, sender, instructions);
+        Frame frame = new Frame(frameProto, evaluator, sender, instructions);
         
         frame.push(selfAndArguments[0]);
         
@@ -35,6 +37,6 @@ public class BehaviorCell extends AbstractCell {
 
     @Override
     public Cell cloneCell() {
-        return new BehaviorCell(instructions, variableCount);
+        return new BehaviorCell(frameProto, instructions, variableCount);
     }
 }

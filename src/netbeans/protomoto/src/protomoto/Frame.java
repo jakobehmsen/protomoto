@@ -7,13 +7,15 @@ import java.util.Stack;
 import java.util.stream.Collectors;
 
 public class Frame extends AbstractCell {
+    private Cell proto;
     private Evaluator evaluator;
     private Frame sender;
     private Instruction[] instructions;
     private int ip;
     private Stack<Cell> stack = new Stack<>();
     
-    public Frame(Evaluator evaluator, Frame sender, Instruction[] instructions) {
+    public Frame(Cell proto, Evaluator evaluator, Frame sender, Instruction[] instructions) {
+        this.proto = proto;
         this.evaluator = evaluator;
         this.sender = sender;
         this.instructions = instructions;
@@ -117,19 +119,21 @@ public class Frame extends AbstractCell {
 
     public void newBehavior() {
         Cell ast = stack.pop();
+        Cell frameProto = stack.pop();
         ArrayList<String> errors = new ArrayList<>();
-        BehaviorCell behavior = evaluator.getEnvironment().createBehavior(null, ast, errors);
+        BehaviorDescriptor behaviorDescriptor = evaluator.getEnvironment().createBehavior(null, ast, errors);
         if(errors.size() > 0) {
             String errorString = "Compile error:\n" + errors.stream().collect(Collectors.joining("\n"));
             primitiveErrorOccurred(errorString);
         } else {
+            BehaviorCell behavior = behaviorDescriptor.createBehavior(frameProto);
             stack.push(behavior);
         }
     }
     
     public void primitiveErrorOccurred(String error) {
-        int errorOccurredSymbolCode = getEnvironment().getSymbolCode("errorOccurred");
-        send(getEnvironment().getPrimitive(), errorOccurredSymbolCode, new Cell[]{getEnvironment().createString(error)});
+        int primitiveErrorOccurredSymbolCode = getEnvironment().getSymbolCode("primitiveErrorOccurred");
+        send(getEnvironment().getFrameProto(), primitiveErrorOccurredSymbolCode, new Cell[]{getEnvironment().createString(error)});
     }
     
     public void send(Cell receiver, int symbolCode, Cell[] args) {
@@ -178,7 +182,7 @@ public class Frame extends AbstractCell {
 
     @Override
     public Cell resolveProto(Environment environment) {
-        return environment.getFrameProto();
+        return proto;
     }
 
     @Override
@@ -194,5 +198,9 @@ public class Frame extends AbstractCell {
     @Override
     public String toString() {
         return Arrays.toString(instructions);// + "/" + stack.toString();
+    }
+
+    public Evaluator getEvalutator() {
+        return evaluator;
     }
 }
