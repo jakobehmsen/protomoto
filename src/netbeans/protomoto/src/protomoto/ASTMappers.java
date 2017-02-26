@@ -8,7 +8,7 @@ public class ASTMappers {
     public static <T extends Cell> ASTMapper constExpression(Function<T, Instruction> constInstructionFunc) {
         return new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 if(asExpression) {
                     Instruction constInstruction = constInstructionFunc.apply((T) ast.get(1));
                 
@@ -21,12 +21,12 @@ public class ASTMappers {
     public static ASTMapper binaryExpression(Instruction instruction) {
         return new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 Cell lhs = (Cell) ast.get(1);
                 Cell rhs = (Cell) ast.get(2);
                 
-                translateChild.accept(lhs);
-                translateChild.accept(rhs);
+                mapExpression.accept(lhs);
+                mapExpression.accept(rhs);
                 
                 emitters.add(InstructionEmitters.single(instruction));
                 
@@ -40,10 +40,10 @@ public class ASTMappers {
     public static ASTMapper nnaryExpression(Instruction instruction, int arity) {
         return new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 for(int i = ast.length() - arity; i < ast.length(); i++) {
                     Cell cell = (Cell) ast.get(i);
-                    translateChild.accept(cell);
+                    mapExpression.accept(cell);
                 }
                 
                 emitters.add(InstructionEmitters.single(instruction));

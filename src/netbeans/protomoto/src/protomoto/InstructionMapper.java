@@ -35,7 +35,10 @@ public class InstructionMapper {
                 if(mapper == null)
                     throw new IllegalArgumentException("Cannot find mapper for " + astType);
                 
-                mapper.translate(arrayAst, emitters, asExpression, child -> fromAST(child, emitters, true, mappers, errorCollector), errorCollector);
+                mapper.translate(arrayAst, emitters, asExpression, 
+                    child -> fromAST(child, emitters, true, mappers, errorCollector), 
+                    child -> fromAST(child, emitters, false, mappers, errorCollector), 
+                    errorCollector);
             } else {
                 // What if empty?
                 
@@ -45,7 +48,7 @@ public class InstructionMapper {
                 }
             }
         } else {
-            // How to handle leafs?
+            throw new IllegalArgumentException("Cannot map leaf " + ast);
         }
     }
 }

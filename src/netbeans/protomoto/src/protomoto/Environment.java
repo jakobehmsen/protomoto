@@ -124,17 +124,17 @@ public class Environment {
         
         mappers.put(createString("send"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
                 int arity = ast.length() - 3;
                 
-                translateChild.accept(receiver);
+                mapExpression.accept(receiver);
                 
                 for(int i = 3; i < ast.length(); i++) {
                     Cell argument = ast.get(i);
-                    translateChild.accept(argument);
+                    mapExpression.accept(argument);
                 }
                 
                 emitters.add(InstructionEmitters.single(Instructions.send(symbolCode, arity)));
@@ -148,14 +148,14 @@ public class Environment {
         mappers.put(createString("clone"), ASTMappers.nnaryExpression(Instructions.cloneCell(), 1));
         mappers.put(createString("set_slot"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
                 Cell value = ast.get(3);
                 
-                translateChild.accept(receiver);
-                translateChild.accept(value);
+                mapExpression.accept(receiver);
+                mapExpression.accept(value);
                 
                 if(asExpression) {
                     emitters.add(InstructionEmitters.single(Instructions.dup2()));
@@ -166,12 +166,12 @@ public class Environment {
         });
         mappers.put(createString("get_slot"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
                 
-                translateChild.accept(receiver);
+                mapExpression.accept(receiver);
                 
                 emitters.add(InstructionEmitters.single(Instructions.getSlot(symbolCode)));
                 
@@ -182,14 +182,14 @@ public class Environment {
         });
         mappers.put(createString("array_set"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 Cell receiver = ast.get(1);
                 Cell index = ast.get(2);
                 Cell value = ast.get(3);
                 
-                translateChild.accept(receiver);
-                translateChild.accept(index);
-                translateChild.accept(value);
+                mapExpression.accept(receiver);
+                mapExpression.accept(index);
+                mapExpression.accept(value);
                 
                 if(asExpression) {
                     emitters.add(InstructionEmitters.single(Instructions.dup3()));
@@ -202,10 +202,10 @@ public class Environment {
         mappers.put(createString("array_length"), ASTMappers.nnaryExpression(Instructions.arrayLength(), 1));
         mappers.put(createString("behavior"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 if(asExpression) {
                     Cell frameProto = ast.get(1);
-                    translateChild.accept(frameProto);
+                    mapExpression.accept(frameProto);
                     ArrayCell parametersCell = (ArrayCell)ast.get(2);
                     String[] parameters = new String[parametersCell.length()];
                     
@@ -224,11 +224,11 @@ public class Environment {
         
         mappers.put(createString("var"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 StringCell name = (StringCell) ast.get(1);
                 Cell value = (Cell) ast.get(2);
                 
-                translateChild.accept(value);
+                mapExpression.accept(value);
                 
                 if(asExpression)
                     emitters.add(InstructionEmitters.single(Instructions.dup()));
@@ -257,11 +257,11 @@ public class Environment {
         
         mappers.put(createString("set"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 StringCell name = (StringCell) ast.get(1);
                 Cell value = (Cell) ast.get(2);
                 
-                translateChild.accept(value);
+                mapExpression.accept(value);
                 
                 if(asExpression)
                     emitters.add(InstructionEmitters.single(Instructions.dup()));
@@ -287,7 +287,7 @@ public class Environment {
         
         mappers.put(createString("get"), new ASTMapper() {
             @Override
-            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> translateChild, Consumer<String> errorCollector) {
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
                 StringCell name = (StringCell) ast.get(1);
                 
                 emitters.add(new InstructionEmitter() {
@@ -304,6 +304,36 @@ public class Environment {
                         instructions.add(Instructions.load(index));
                     }
                 });
+            }
+        });
+        
+        mappers.put(createString("push"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
+                Cell target = ast.get(1);
+                
+                // Result of target will be on top of stack for each of statement
+                mapExpression.accept(target);
+                
+                for(int i = 2; i < ast.length(); i++) {
+                    Cell statement = ast.get(i);
+                    mapStatement.accept(statement);
+                }
+                
+                // Result of target remains top of stack at this point
+                if(!asExpression) {
+                    emitters.add(InstructionEmitters.single(Instructions.pop()));
+                }
+            }
+        });
+        
+        mappers.put(createString("peek"), new ASTMapper() {
+            @Override
+            public void translate(ArrayCell ast, List<InstructionEmitter> emitters, boolean asExpression, Consumer<Cell> mapExpression, Consumer<Cell> mapStatement, Consumer<String> errorCollector) {
+                // Result of target remains top of stack at this point
+                if(asExpression) {
+                    emitters.add(InstructionEmitters.single(Instructions.peek()));
+                }
             }
         });
         

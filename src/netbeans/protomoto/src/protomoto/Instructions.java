@@ -366,6 +366,21 @@ public class Instructions {
         };
     }
 
+    public static Instruction peek() {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                frame.push(frame.peek());
+                frame.incIP();
+            }
+
+            @Override
+            public String toString() {
+                return "peek";
+            }
+        };
+    }
+
     public static Instruction environment() {
         return new Instruction() {
             @Override

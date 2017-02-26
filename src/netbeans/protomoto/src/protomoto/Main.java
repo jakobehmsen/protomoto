@@ -3,12 +3,13 @@ package protomoto;
 import java.io.IOException;
 import java.util.List;
 import org.jparsec.Parser;
+import protomoto.bootstrap.ReferenceParser;
 
 public class Main {
     public static void main(String[] args) throws IOException {        
         Environment environment = new Environment();
         
-        Parser<Cell> cellParser = ASTParser.create(new ASTFactory<Cell>() {
+        ASTFactory<Cell> cellFactory = new ASTFactory<Cell>() {
             @Override
             public Cell createList(List<Cell> items) {
                 return new ArrayCell(items.toArray(new Cell[items.size()]));
@@ -23,7 +24,10 @@ public class Main {
             public Cell createInt(int i) {
                 return new IntegerCell(i);
             }
-        });
+        };
+        
+        Parser<Cell> cellParser2 = ReferenceParser.create(cellFactory);
+        Parser<Cell> cellParser = ASTParser.create(cellFactory);
         
         /*
         
@@ -93,10 +97,22 @@ var x = ...
         
         */
         
+        String src2 = "{x: 7, x: 4}";
+        Cell program = cellParser2.parse(src2);
+        
+        String src = "(push (clone (environment))\n" +
+            "    (set_slot (peek) 'x' (consti 1))\n" +
+            "    (set_slot (peek) 'y' (consti 4))\n" +
+            ")\n";
+        
+        //Cell program = cellParser.parse(src);
+        
+        /*
         Cell program = cellParser.parse(
             "(set_slot (get_slot (environment) 'Frame') 'whatever' (behavior (get_slot (environment) 'Frame') () (consts 'Heyyy')))\n" +
             "(send (this_frame) 'whatever')\n"
         );
+        */
         
         /*Cell program = cellParser.parse(
             "(set_slot (get_slot (environment) 'Integer') '-' (behavior (get_slot (environment) 'Frame') (other) (subi (self) (get other))))\n" +
