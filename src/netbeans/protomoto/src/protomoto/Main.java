@@ -3,6 +3,7 @@ package protomoto;
 import java.io.IOException;
 import java.util.List;
 import org.jparsec.Parser;
+import org.jparsec.Scanners;
 import protomoto.bootstrap.ReferenceParser;
 
 public class Main {
@@ -97,7 +98,14 @@ var x = ...
         
         */
         
-        String src2 = "{x: 7, x: 4}";
+        ReferenceParser.TERMS.token("var").from(ReferenceParser.TOKENIZER, Scanners.JAVA_DELIMITER).parse("var");
+        
+        
+        //String src2 = "{x: 7, x: 4}";
+        String src2 = 
+            "var x = 46154\n" +
+            "x = 2334\n" +
+            "x\n";
         Cell program = cellParser2.parse(src2);
         
         String src = "(push (clone (environment))\n" +

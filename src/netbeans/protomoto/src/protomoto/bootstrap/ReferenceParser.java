@@ -8,12 +8,20 @@ import org.jparsec.Terminals;
 import protomoto.ASTFactory;
 
 public class ReferenceParser {
-    private static final Terminals OPERATORS = Terminals.operators("{", "}", ":", ",");
-    private static final Parser<Void> IGNORED = Parsers.or(Scanners.JAVA_LINE_COMMENT, Scanners.JAVA_BLOCK_COMMENT, Scanners.WHITESPACES).skipMany();
-    private static final Parser<?> TOKENIZER = Parsers.or(Terminals.IntegerLiteral.TOKENIZER, Terminals.StringLiteral.SINGLE_QUOTE_TOKENIZER, Terminals.Identifier.TOKENIZER, OPERATORS.tokenizer());
+    public static final Terminals TERMS = Terminals
+      .operators("{", "}", ":", ",", "=")
+      .words(Scanners.IDENTIFIER)
+      .keywords("var")
+      .build();
+    public static final Parser<Void> IGNORED = Parsers.or(Scanners.JAVA_LINE_COMMENT, Scanners.JAVA_BLOCK_COMMENT, Scanners.WHITESPACES).skipMany();
+    public static final Parser<?> TOKENIZER = Parsers.or(
+        Terminals.IntegerLiteral.TOKENIZER, 
+        Terminals.StringLiteral.SINGLE_QUOTE_TOKENIZER,
+        TERMS.tokenizer(),
+        Terminals.Identifier.TOKENIZER);
     
-    private static Parser<?> term(String... names) {
-        return OPERATORS.token(names);
+    public static Parser<?> term(String... names) {
+        return TERMS.token(names);
     }
 
     public static <T> Parser<T> create(ASTFactory<T> factory) {
@@ -25,9 +33,26 @@ public class ReferenceParser {
         
         Parser<T> atom = INTEGER.or(STRING);
         
-        Parser.Reference<T> ref = Parser.newReference();
+        Parser.Reference<T> expressionRef = Parser.newReference();
         
-        Parser<T> objectSlot = Parsers.sequence(SYMBOL, term(":"), ref.lazy(), (slot, colon, value) -> factory.createList(
+        Parser<T> varDeclareAssign = Parsers.sequence(term("var"), SYMBOL, term("="), expressionRef.lazy(), (kwVar, id, equals, value) -> factory.createList(
+            factory.createString("var"),
+            factory.createString(id),
+            value
+        ));
+        
+        Parser<T> varAssign = Parsers.sequence(SYMBOL, term("="), expressionRef.lazy(), (id, equals, value) -> factory.createList(
+            factory.createString("set"),
+            factory.createString(id),
+            value
+        ));
+        
+        Parser<T> varRead = SYMBOL.map(id -> factory.createList(
+            factory.createString("get"),
+            factory.createString(id)
+        ));
+        
+        Parser<T> objectSlot = Parsers.sequence(SYMBOL, term(":"), expressionRef.lazy(), (slot, colon, value) -> factory.createList(
             factory.createString("set_slot"),
             factory.createList(factory.createString("peek")),
             factory.createString(slot),
@@ -42,12 +67,12 @@ public class ReferenceParser {
             
             return factory.createList(items);
         }).between(term("{"), term("}"));
-        Parser<T> expression = Parsers.or(objectLiteral, atom);   
-        ref.set(expression);
         
-        Parser<T> unit = ref.lazy();//.between(term("("), term(")")).or(atom);
-        Parser<T> parser = unit.many().map((java.util.List<T> x) -> (T) factory.createList(x));
-        //ref.set(parser);
+        expressionRef.set(Parsers.or(varDeclareAssign, varAssign, varRead, objectLiteral, atom));
+        
+        Parser<T> expression = expressionRef.lazy();
+        Parser<T> parser = expression.many().map((java.util.List<T> x) -> (T) factory.createList(x));
+        
         return parser.from(TOKENIZER, IGNORED);
     }
 }
