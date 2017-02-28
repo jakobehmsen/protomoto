@@ -1,6 +1,7 @@
 package protomoto.bootstrap;
 
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 import org.jparsec.Parser;
 import org.jparsec.Parsers;
 import org.jparsec.Scanners;
@@ -9,7 +10,7 @@ import protomoto.ASTFactory;
 
 public class ReferenceParser {
     public static final Terminals TERMS = Terminals
-      .operators("{", "}", ":", ",", "=")
+      .operators("{", "}", ":", ",", "=", "->", "(", ")")
       .words(Scanners.IDENTIFIER)
       .keywords("var")
       .build();
@@ -34,6 +35,9 @@ public class ReferenceParser {
         Parser<T> atom = INTEGER.or(STRING);
         
         Parser.Reference<T> expressionRef = Parser.newReference();
+        
+        Parser<T> expression = expressionRef.lazy();
+        Parser<T> expressions = expression.many().map((java.util.List<T> x) -> (T) factory.createList(x));
         
         Parser<T> varDeclareAssign = Parsers.sequence(term("var"), SYMBOL, term("="), expressionRef.lazy(), (kwVar, id, equals, value) -> factory.createList(
             factory.createString("var"),
@@ -68,11 +72,23 @@ public class ReferenceParser {
             return factory.createList(items);
         }).between(term("{"), term("}"));
         
-        expressionRef.set(Parsers.or(varDeclareAssign, varAssign, varRead, objectLiteral, atom));
+        Parser<T> behaviorParams = Parsers.sequence(term("("), SYMBOL.sepBy(term(",")), term(")"), (op, params, cp) -> 
+            factory.createList(params.stream().map(p -> factory.createString(p)).collect(Collectors.toList()))
+        );
         
-        Parser<T> expression = expressionRef.lazy();
-        Parser<T> parser = expression.many().map((java.util.List<T> x) -> (T) factory.createList(x));
+        Parser<T> behaviorBody = Parsers.sequence(term("{"), expressions, term("}"), (os, exprs, cs) -> exprs);
         
-        return parser.from(TOKENIZER, IGNORED);
+        // (behavior (get_slot (environment) 'Frame') () (consts 'Heyyy'))
+        Parser<T> behavior = Parsers.sequence(behaviorParams, term("->"), behaviorBody, (params, arrow, body) -> factory.createList(
+            factory.createString("behavior"),
+            // (get_slot (environment) 'Frame')
+            factory.createList(factory.createString("get_slot"), factory.createList(factory.createString("environment")), factory.createString("Frame")),
+            params,
+            body
+        ));
+        
+        expressionRef.set(Parsers.or(varDeclareAssign, varAssign, varRead, objectLiteral, behavior, atom));
+        
+        return expressions.from(TOKENIZER, IGNORED);
     }
 }

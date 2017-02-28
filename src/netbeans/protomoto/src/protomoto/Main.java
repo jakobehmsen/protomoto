@@ -96,15 +96,15 @@ var x = ...
     // Should be run on
 }
         
-        */
-        
-        ReferenceParser.TERMS.token("var").from(ReferenceParser.TOKENIZER, Scanners.JAVA_DELIMITER).parse("var");
-        
+        */        
         
         //String src2 = "{x: 7, x: 4}";
-        String src2 = 
+        /*String src2 = 
             "var x = 46154\n" +
             "x = 2334\n" +
+            "x\n";*/
+        String src2 = 
+            "var x = (x, y, z) -> {7}\n" +
             "x\n";
         Cell program = cellParser2.parse(src2);
         
