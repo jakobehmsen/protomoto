@@ -87,7 +87,9 @@ public class ReferenceParser {
             body
         ));
         
-        expressionRef.set(Parsers.or(varDeclareAssign, varAssign, varRead, objectLiteral, behavior, atom));
+        Parser<T> target = Parsers.or(varDeclareAssign, varAssign, varRead, objectLiteral, behavior, atom);
+        // Chain with slotGet* slotSet?
+        expressionRef.set(target);
         
         return expressions.from(TOKENIZER, IGNORED);
     }
