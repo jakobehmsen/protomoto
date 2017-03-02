@@ -1,6 +1,7 @@
 package protomoto.bootstrap;
 
 import java.util.ArrayList;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jparsec.Parser;
 import org.jparsec.Parsers;
@@ -10,7 +11,7 @@ import protomoto.ASTFactory;
 
 public class ReferenceParser {
     public static final Terminals TERMS = Terminals
-      .operators("{", "}", ":", ",", "=", "->", "(", ")")
+      .operators("{", "}", ":", ",", "=", "->", "(", ")", ".", "=")
       .words(Scanners.IDENTIFIER)
       .keywords("var")
       .build();
@@ -45,12 +46,20 @@ public class ReferenceParser {
             value
         ));
         
+        // Should depend on whether a var has been declared
+        // If a var has been declared, then the same
+        // If not, then it should be a (set_slot (environment) <id>, <value>)
+        // Use Compiler; return Compiler in parser
         Parser<T> varAssign = Parsers.sequence(SYMBOL, term("="), expressionRef.lazy(), (id, equals, value) -> factory.createList(
             factory.createString("set"),
             factory.createString(id),
             value
         ));
         
+        // Should depend on whether a var has been declared
+        // If a var has been declared, then the same
+        // If not, then it should be a (get_slot (environment) <id>)
+        // Use Compiler; return Compiler in parser
         Parser<T> varRead = SYMBOL.map(id -> factory.createList(
             factory.createString("get"),
             factory.createString(id)
@@ -78,18 +87,36 @@ public class ReferenceParser {
         
         Parser<T> behaviorBody = Parsers.sequence(term("{"), expressions, term("}"), (os, exprs, cs) -> exprs);
         
+        // How to support creating behaviors with proto frames
         // (behavior (get_slot (environment) 'Frame') () (consts 'Heyyy'))
         Parser<T> behavior = Parsers.sequence(behaviorParams, term("->"), behaviorBody, (params, arrow, body) -> factory.createList(
             factory.createString("behavior"),
-            // (get_slot (environment) 'Frame')
             factory.createList(factory.createString("get_slot"), factory.createList(factory.createString("environment")), factory.createString("Frame")),
             params,
             body
         ));
         
         Parser<T> target = Parsers.or(varDeclareAssign, varAssign, varRead, objectLiteral, behavior, atom);
+        
+        Parser.Reference<Function<T, T>> slotSetOrSlotGetChainRef = Parser.newReference();
+        Parser<Function<T, T>> slotSetChain = Parsers.sequence(term("."), SYMBOL, term("="), expressionRef.lazy(), (dot, id, eq, value) -> t -> 
+            factory.createList(factory.createString("set_slot"), t, factory.createString(id), value));
+        Parser<Function<T, T>> slotGetChain = Parsers.sequence(term("."), SYMBOL, slotSetOrSlotGetChainRef.lazy().asOptional(), (dot, id, chainOpt) -> t -> {
+            t = factory.createList(factory.createString("get_slot"), t, factory.createString(id));
+            if(chainOpt.isPresent())
+                return chainOpt.get().apply(t);
+            return t;
+        });
+        
+        slotSetOrSlotGetChainRef.set(Parsers.or(slotSetChain, slotGetChain));
+        Parser<T> exprChain = Parsers.sequence(target, slotSetOrSlotGetChainRef.lazy().asOptional(), (t, chain) -> {
+            if(chain.isPresent())
+                return chain.get().apply(t);
+            return t;
+        });
+        
         // Chain with slotGet* slotSet?
-        expressionRef.set(target);
+        expressionRef.set(exprChain);
         
         return expressions.from(TOKENIZER, IGNORED);
     }

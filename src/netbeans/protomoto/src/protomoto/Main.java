@@ -103,9 +103,12 @@ var x = ...
             "var x = 46154\n" +
             "x = 2334\n" +
             "x\n";*/
-        String src2 = 
+        /*String src2 = 
             "var x = (x, y, z) -> {7}\n" +
-            "x\n";
+            "x\n";*/
+        
+        String src2 = 
+            "x.y.z = 8\n";
         Cell program = cellParser2.parse(src2);
         
         String src = "(push (clone (environment))\n" +
