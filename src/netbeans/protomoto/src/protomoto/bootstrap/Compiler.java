@@ -1,6 +1,5 @@
 package protomoto.bootstrap;
 
-import protomoto.ASTFactory;
 import protomoto.Cell;
 
 public interface Compiler {
