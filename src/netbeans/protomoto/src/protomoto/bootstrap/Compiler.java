@@ -1,9 +1,12 @@
 package protomoto.bootstrap;
 
-public interface Compiler<T> {
-    default T compile() {
+import protomoto.ASTFactory;
+import protomoto.Cell;
+
+public interface Compiler {
+    default Cell compile() {
         return compile(new CompileContext());
     }
     
-    T compile(CompileContext ctx);
+    Cell compile(CompileContext ctx);
 }

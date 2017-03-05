@@ -27,7 +27,7 @@ public class Main {
             }
         };
         
-        Parser<Cell> cellParser2 = ReferenceParser.create(cellFactory);
+        Parser<Cell> cellParser2 = ReferenceParser.create();
         Parser<Cell> cellParser = ASTParser.create(cellFactory);
         
         /*
