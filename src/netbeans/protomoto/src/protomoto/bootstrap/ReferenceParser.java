@@ -9,6 +9,7 @@ import org.jparsec.Parser;
 import org.jparsec.Parsers;
 import org.jparsec.Scanners;
 import org.jparsec.Terminals;
+import org.jparsec.pattern.Patterns;
 import protomoto.ASTFactory;
 import protomoto.ArrayCell;
 import protomoto.Cell;
@@ -16,9 +17,15 @@ import protomoto.IntegerCell;
 import protomoto.StringCell;
 
 public class ReferenceParser {
+    private static final Parser<String> IDENTIFIER = Patterns.isChar(Character::isJavaIdentifierStart)
+      .next(Patterns.isChar(Character::isJavaIdentifierPart).many())
+      .toScanner("word")
+      .source();
+    
     public static final Terminals TERMS = Terminals
       .operators("{", "}", ":", ",", "=", "->", "(", ")", ".", "=")
-      .words(Scanners.IDENTIFIER)
+      //.words(Scanners.IDENTIFIER)
+      .words(IDENTIFIER)
       .keywords("var")
       .build();
     public static final Parser<Void> IGNORED = Parsers.or(Scanners.JAVA_LINE_COMMENT, Scanners.JAVA_BLOCK_COMMENT, Scanners.WHITESPACES).skipMany();
@@ -121,23 +128,27 @@ public class ReferenceParser {
         });
         objectLiteral = objectLiteral.between(term("{"), term("}"));
         
-        Parser<Compiler> behaviorParams = Parsers.sequence(term("("), SYMBOL.sepBy(term(",")), term(")"), (op, params, cp) -> ctx -> 
-            new ArrayCell(params.stream().map(p -> new StringCell(p)).toArray(s -> new Cell[s]))
-        );
+        Parser<List<String>> behaviorParams = Parsers.sequence(term("("), SYMBOL.sepBy(term(",")), term(")"), (op, params, cp) -> params);
         
         Parser<Compiler> behaviorBody = Parsers.sequence(term("{"), expressions, term("}"), (os, exprs, cs) -> ctx -> 
             // Compile in new compile context
-            exprs.compile()
+            exprs.compile(ctx)
         );
         
         // How to support creating behaviors with proto frames
         // (behavior (get_slot (environment) 'Frame') () (consts 'Heyyy'))
-        Parser<Compiler> behavior = Parsers.sequence(behaviorParams, term("->"), behaviorBody, (params, arrow, body) -> ctx -> new ArrayCell(new Cell[] {
-            new StringCell("behavior"),
-            new ArrayCell(new Cell[] {new StringCell("get_slot"), new ArrayCell(new Cell[] {new StringCell("environment")}), new StringCell("Frame")}),
-            params.compile(ctx),
-            body.compile(ctx)
-        }));
+        Parser<Compiler> behavior = Parsers.sequence(behaviorParams, term("->"), behaviorBody, (params, arrow, body) -> ctx -> {
+            CompileContext bodyCtx = new CompileContext();
+            // new ArrayCell(params.stream().map(p -> new StringCell(p)).toArray(s -> new Cell[s]))
+            params.forEach(p -> bodyCtx.declare(p));
+            Cell paramsCell = new ArrayCell(params.stream().map(p -> new StringCell(p)).toArray(s -> new Cell[s]));
+            return new ArrayCell(new Cell[] {
+                new StringCell("behavior"),
+                new ArrayCell(new Cell[] {new StringCell("get_slot"), new ArrayCell(new Cell[] {new StringCell("environment")}), new StringCell("Frame")}),
+                paramsCell,
+                body.compile(bodyCtx)
+            });
+        });
         
         Parser<Compiler> target = Parsers.or(varDeclareAssign, varAssign, thisMessageSend, varRead, objectLiteral, behavior, atom);
         
@@ -188,7 +199,7 @@ public class ReferenceParser {
             
         messageSendBuilder.add(new StringCell("send"));
         messageSendBuilder.add(receiver);
-        messageSendBuilder.add(new StringCell(symbol));
+        messageSendBuilder.add(new StringCell(symbol + "$" + args.size()));
 
         messageSendBuilder.addAll(args.stream().map(c -> c.compile(ctx)).collect(Collectors.toList()));
 

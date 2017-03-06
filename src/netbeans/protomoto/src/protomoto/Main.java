@@ -114,11 +114,13 @@ var x = ...
             "Frame.whatever\n";*/
         /*String src2 = 
             "print('Heyyy%i', 6)\n";*/
-        String src2 = 
-            //"self.print('Heyyy%i', 6)\n";
+        /*String src2 = 
             "String.test = () -> {'yay'}\n" +
             "String.weeee = 'as'\n" +
-            "'afsfds'.test().test().weeee";
+            "'afsfds'.test().test().weeee";*/
+        String src2 = 
+            "String.test$1 = (arg) -> {arg}\n" +
+            "'afsfds'.test('this&that')";
         Cell program = cellParser2.parse(src2);
         
         String src = "(push (clone (environment))\n" +
