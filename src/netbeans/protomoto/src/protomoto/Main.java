@@ -108,10 +108,17 @@ var x = ...
             "x\n";*/
         
         //String src2 = "x.y.z = 8\n";
-        String src2 = 
+        /*String src2 = 
             //"var x = 46154\n" +
             "Frame.whatever = 'Heyyy'\n" +
-            "Frame.whatever\n";
+            "Frame.whatever\n";*/
+        /*String src2 = 
+            "print('Heyyy%i', 6)\n";*/
+        String src2 = 
+            //"self.print('Heyyy%i', 6)\n";
+            "String.test = () -> {'yay'}\n" +
+            "String.weeee = 'as'\n" +
+            "'afsfds'.test().test().weeee";
         Cell program = cellParser2.parse(src2);
         
         String src = "(push (clone (environment))\n" +

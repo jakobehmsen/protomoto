@@ -77,6 +77,12 @@ public class ReferenceParser {
             }
         });
         
+        Parser<List<Compiler>> messageArgs = expressionRef.lazy().sepBy(term(","));
+        
+        Parser<Compiler> thisMessageSend = Parsers.sequence(SYMBOL, term("("), messageArgs, term(")"), (symbol, op, args, cp) -> ctx -> {
+            return createMessageSend(ctx, symbol, args, new ArrayCell(new Cell[] {new StringCell("self")}));
+        });
+        
         // Should depend on whether a var has been declared
         // If a var has been declared, then the same
         // If not, then it should be a (get_slot (environment) <id>)
@@ -133,7 +139,7 @@ public class ReferenceParser {
             body.compile(ctx)
         }));
         
-        Parser<Compiler> target = Parsers.or(varDeclareAssign, varAssign, varRead, objectLiteral, behavior, atom);
+        Parser<Compiler> target = Parsers.or(varDeclareAssign, varAssign, thisMessageSend, varRead, objectLiteral, behavior, atom);
         
         Parser.Reference<Function<Cell, Compiler>> slotSetOrSlotGetChainRef = Parser.newReference();
         Parser<Function<Cell, Compiler>> slotSetChain = Parsers.sequence(term("."), SYMBOL, term("="), expressionRef.lazy(), (dot, id, eq, value) -> t -> ctx ->
@@ -148,8 +154,20 @@ public class ReferenceParser {
                 return t2;
             }
         });
+        Parser<Function<Cell, Compiler>> messageSendChain = Parsers.sequence(
+                term("."), SYMBOL, term("("), messageArgs, term(")"), slotSetOrSlotGetChainRef.lazy().asOptional(), 
+                (dot, id, op, args, cp, chainOpt) -> t -> new Compiler() {
+            @Override
+            public Cell compile(CompileContext ctx) {
+                Cell t2 = t;
+                t2 = createMessageSend(ctx, id, args, t2);
+                if(chainOpt.isPresent())
+                    return chainOpt.get().apply(t2).compile(ctx);
+                return t2;
+            }
+        });
         
-        slotSetOrSlotGetChainRef.set(Parsers.or(slotSetChain, slotGetChain));
+        slotSetOrSlotGetChainRef.set(Parsers.or(messageSendChain, slotSetChain, slotGetChain));
         Parser<Compiler> exprChain = Parsers.sequence(target, slotSetOrSlotGetChainRef.lazy().asOptional(), (t, chain) -> new Compiler() {
             @Override
             public Cell compile(CompileContext ctx) {
@@ -163,5 +181,17 @@ public class ReferenceParser {
         expressionRef.set(exprChain);
         
         return expressions.from(TOKENIZER, IGNORED).map(compiler -> compiler.compile());
+    }
+    
+    private static Cell createMessageSend(CompileContext ctx, String symbol, List<Compiler> args, Cell receiver) {
+        ArrayList<Cell> messageSendBuilder = new ArrayList<>();
+            
+        messageSendBuilder.add(new StringCell("send"));
+        messageSendBuilder.add(receiver);
+        messageSendBuilder.add(new StringCell(symbol));
+
+        messageSendBuilder.addAll(args.stream().map(c -> c.compile(ctx)).collect(Collectors.toList()));
+
+        return new ArrayCell(messageSendBuilder.stream().toArray(s -> new Cell[s]));
     }
 }
