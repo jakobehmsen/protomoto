@@ -1,4 +1,10 @@
-package protomoto;
+package protomoto.cell;
+
+import protomoto.runtime.Evaluator;
+import protomoto.runtime.Frame;
+import protomoto.runtime.Instruction;
+import protomoto.cell.AbstractCell;
+import protomoto.cell.Cell;
 
 public class BehaviorCell extends AbstractCell {
     private Cell frameProto;

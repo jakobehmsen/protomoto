@@ -1,4 +1,6 @@
-package protomoto;
+package protomoto.cell;
+
+import protomoto.cell.Cell;
 
 public class DefaultCell extends AbstractCell {
     private Cell proto;

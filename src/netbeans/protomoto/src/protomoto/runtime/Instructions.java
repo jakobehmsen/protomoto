@@ -1,5 +1,10 @@
-package protomoto;
+package protomoto.runtime;
 
+import protomoto.cell.ArrayCell;
+import protomoto.cell.BehaviorDescriptor;
+import protomoto.cell.BehaviorCell;
+import protomoto.cell.IntegerCell;
+import protomoto.cell.Cell;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;

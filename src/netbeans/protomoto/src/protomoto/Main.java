@@ -1,10 +1,18 @@
 package protomoto;
 
+import protomoto.ast.ASTParser;
+import protomoto.ast.ASTFactory;
+import protomoto.runtime.Evaluator;
+import protomoto.cell.Environment;
+import protomoto.cell.ArrayCell;
+import protomoto.cell.IntegerCell;
+import protomoto.cell.StringCell;
+import protomoto.cell.Cell;
 import java.io.IOException;
 import java.util.List;
 import org.jparsec.Parser;
 import org.jparsec.Scanners;
-import protomoto.bootstrap.ReferenceParser;
+import protomoto.bootstrap.lang.ReferenceParser;
 
 public class Main {
     public static void main(String[] args) throws IOException {        

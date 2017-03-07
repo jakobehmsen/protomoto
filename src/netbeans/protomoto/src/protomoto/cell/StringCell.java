@@ -1,4 +1,6 @@
-package protomoto;
+package protomoto.cell;
+
+import protomoto.cell.Cell;
 
 public class StringCell extends AbstractCell {
     public final String string;

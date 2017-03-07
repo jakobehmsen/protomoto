@@ -1,5 +1,6 @@
-package protomoto;
+package protomoto.cell;
 
+import protomoto.cell.Cell;
 import java.util.Hashtable;
 
 public abstract class AbstractCell implements Cell {

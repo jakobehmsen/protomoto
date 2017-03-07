@@ -1,4 +1,4 @@
-package protomoto;
+package protomoto.ast;
 
 import java.util.Arrays;
 import java.util.List;

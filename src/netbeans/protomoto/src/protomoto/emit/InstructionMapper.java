@@ -1,9 +1,13 @@
-package protomoto;
+package protomoto.emit;
 
+import protomoto.cell.ArrayCell;
+import protomoto.cell.StringCell;
+import protomoto.cell.Cell;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import protomoto.runtime.Instruction;
 
 public class InstructionMapper {
     public static Instruction[] fromAST(MetaFrame metaFrame, Cell ast, Map<Cell, ASTMapper> mappers, InstructionEmitter endEmitter, List<String> errors) {

@@ -1,4 +1,7 @@
-package protomoto;
+package protomoto.runtime;
+
+import protomoto.cell.Environment;
+import protomoto.cell.Cell;
 
 public class Evaluator {
     private Environment environment;

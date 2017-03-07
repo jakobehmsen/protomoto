@@ -1,6 +1,6 @@
-package protomoto.bootstrap;
+package protomoto.bootstrap.lang;
 
-import protomoto.Cell;
+import protomoto.cell.Cell;
 
 public interface Compiler {
     default Cell compile() {

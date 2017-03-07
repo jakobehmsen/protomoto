@@ -1,5 +1,8 @@
-package protomoto;
+package protomoto.emit;
 
+import protomoto.emit.InstructionEmitter;
+import protomoto.cell.ArrayCell;
+import protomoto.cell.Cell;
 import java.util.List;
 import java.util.function.Consumer;
 

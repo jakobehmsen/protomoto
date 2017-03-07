@@ -1,11 +1,28 @@
-package protomoto;
+package protomoto.cell;
 
+import protomoto.cell.ArrayCell;
+import protomoto.cell.BehaviorDescriptor;
+import protomoto.cell.BehaviorCell;
+import protomoto.cell.IntegerCell;
+import protomoto.cell.StringCell;
+import protomoto.cell.DefaultCell;
+import protomoto.cell.Cell;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import protomoto.emit.ASTMapper;
+import protomoto.emit.ASTMappers;
+import protomoto.runtime.Evaluator;
+import protomoto.runtime.Frame;
+import protomoto.runtime.Instruction;
+import protomoto.emit.InstructionEmitter;
+import protomoto.emit.InstructionEmitters;
+import protomoto.emit.InstructionMapper;
+import protomoto.runtime.Instructions;
+import protomoto.emit.MetaFrame;
 
 public class Environment {
     private DefaultCell anyProto;

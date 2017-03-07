@@ -1,4 +1,4 @@
-package protomoto.bootstrap;
+package protomoto.bootstrap.lang;
 
 import java.util.HashSet;
 

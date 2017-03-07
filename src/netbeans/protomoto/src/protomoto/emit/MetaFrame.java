@@ -1,4 +1,4 @@
-package protomoto;
+package protomoto.emit;
 
 import java.util.Hashtable;
 

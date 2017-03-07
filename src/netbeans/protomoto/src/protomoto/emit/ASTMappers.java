@@ -1,8 +1,17 @@
-package protomoto;
+package protomoto.emit;
 
+import protomoto.emit.ASTMapper;
+import protomoto.runtime.Instruction;
+import protomoto.emit.InstructionEmitter;
+import protomoto.emit.InstructionEmitters;
+import protomoto.runtime.Instructions;
+import protomoto.cell.ArrayCell;
+import protomoto.cell.Cell;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import protomoto.runtime.Instruction;
+import protomoto.runtime.Instructions;
 
 public class ASTMappers {
     public static <T extends Cell> ASTMapper constExpression(Function<T, Instruction> constInstructionFunc) {

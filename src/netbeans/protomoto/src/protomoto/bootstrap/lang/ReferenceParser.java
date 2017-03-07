@@ -1,4 +1,4 @@
-package protomoto.bootstrap;
+package protomoto.bootstrap.lang;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,11 +10,11 @@ import org.jparsec.Parsers;
 import org.jparsec.Scanners;
 import org.jparsec.Terminals;
 import org.jparsec.pattern.Patterns;
-import protomoto.ASTFactory;
-import protomoto.ArrayCell;
-import protomoto.Cell;
-import protomoto.IntegerCell;
-import protomoto.StringCell;
+import protomoto.ast.ASTFactory;
+import protomoto.cell.ArrayCell;
+import protomoto.cell.Cell;
+import protomoto.cell.IntegerCell;
+import protomoto.cell.StringCell;
 
 public class ReferenceParser {
     private static final Parser<String> IDENTIFIER = Patterns.isChar(Character::isJavaIdentifierStart)

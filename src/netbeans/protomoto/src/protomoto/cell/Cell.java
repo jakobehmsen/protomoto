@@ -1,4 +1,4 @@
-package protomoto;
+package protomoto.cell;
 
 public interface Cell {
     Cell resolveProto(Environment environment);

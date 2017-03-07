@@ -1,6 +1,7 @@
-package protomoto;
+package protomoto.emit;
 
 import java.util.List;
+import protomoto.runtime.Instruction;
 
 public class InstructionEmitters {
     public static InstructionEmitter single(Instruction instruction) {

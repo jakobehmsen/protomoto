@@ -1,5 +1,8 @@
-package protomoto;
+package protomoto.cell;
 
+import protomoto.cell.BehaviorCell;
+import protomoto.cell.AbstractCell;
+import protomoto.cell.Cell;
 import java.util.Arrays;
 
 public class ArrayCell extends AbstractCell {
