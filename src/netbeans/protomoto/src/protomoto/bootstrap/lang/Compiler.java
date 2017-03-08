@@ -7,5 +7,7 @@ public interface Compiler {
         return compile(new CompileContext());
     }
     
+    default String modifyId(String id) {return id;}
+    
     Cell compile(CompileContext ctx);
 }

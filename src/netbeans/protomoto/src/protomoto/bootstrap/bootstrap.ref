@@ -1,5 +1,9 @@
-Frame.something$0 = () -> {
+Frame.something = () -> {
     'Some stuff'
+}
+
+Frame.something = (arg) -> {
+    arg
 }
 
 Integer.+ = (other) -> {#(addi (self) (get other))}
@@ -7,6 +11,10 @@ Integer.- = (other) -> {#(subi (self) (get other))}
 Integer.* = (other) -> {#(muli (self) (get other))}
 Integer./ = (other) -> {#(divi (self) (get other))}
 
+Integer.whatever = 'HI'
+
 //Frame.something()
 
 1.+(3).*(2)
+
+Frame.something()

@@ -61,10 +61,6 @@ public class ReferenceParser {
         Parser<String> SYMBOL = Terminals.Identifier.PARSER;
         Parser<String> SYMBOL_OP = Parsers.or(
             Terminals.Identifier.PARSER,
-            term("+", "-", "*", "/").map(t -> 
-                t.value().toString() + "$1"));
-        Parser<String> SYMBOL_SELECTOR = Parsers.or(
-            Terminals.Identifier.PARSER,
             term("+", "-", "*", "/").map(t -> t.value().toString()));
         
         Parser<Compiler> atom = INTEGER.or(STRING);
@@ -158,7 +154,7 @@ public class ReferenceParser {
         
         // How to support creating behaviors with proto frames
         // (behavior (get_slot (environment) 'Frame') () (consts 'Heyyy'))
-        Parser<Compiler> behavior = Parsers.sequence(behaviorParams, term("->"), behaviorBody, (params, arrow, body) -> ctx -> {
+        /*Parser<Compiler> behavior = Parsers.sequence(behaviorParams, term("->"), behaviorBody, (params, arrow, body) -> ctx -> {
             CompileContext bodyCtx = new CompileContext();
             // new ArrayCell(params.stream().map(p -> new StringCell(p)).toArray(s -> new Cell[s]))
             params.forEach(p -> bodyCtx.declare(p));
@@ -169,6 +165,27 @@ public class ReferenceParser {
                 paramsCell,
                 body.compile(bodyCtx)
             });
+        });*/
+        
+        Parser<Compiler> behavior = Parsers.sequence(behaviorParams, term("->"), behaviorBody, (params, arrow, body) -> new Compiler() {
+            @Override
+            public String modifyId(String id) {
+                return id + "$" + params.size();
+            }
+            
+            @Override
+            public Cell compile(CompileContext ctx) {
+                CompileContext bodyCtx = new CompileContext();
+                // new ArrayCell(params.stream().map(p -> new StringCell(p)).toArray(s -> new Cell[s]))
+                params.forEach(p -> bodyCtx.declare(p));
+                Cell paramsCell = new ArrayCell(params.stream().map(p -> new StringCell(p)).toArray(s -> new Cell[s]));
+                return new ArrayCell(new Cell[] {
+                    new StringCell("behavior"),
+                    new ArrayCell(new Cell[] {new StringCell("get_slot"), new ArrayCell(new Cell[] {new StringCell("environment")}), new StringCell("Frame")}),
+                    paramsCell,
+                    body.compile(bodyCtx)
+                });
+            }
         });
         
         Parser<Cell> astParser = ASTParser.create1(new ASTFactory<Cell>() {
@@ -192,8 +209,10 @@ public class ReferenceParser {
         Parser<Compiler> target = Parsers.or(varDeclareAssign, varAssign, thisMessageSend, varRead, objectLiteral, behavior, primitive, atom);
         
         Parser.Reference<Function<Cell, Compiler>> slotSetOrSlotGetChainRef = Parser.newReference();
-        Parser<Function<Cell, Compiler>> slotSetChain = Parsers.sequence(term("."), SYMBOL_OP, term("="), expressionRef.lazy(), (dot, id, eq, value) -> t -> ctx ->
-            new ArrayCell(new Cell[] {new StringCell("set_slot"), t, new StringCell(id), value.compile(ctx)}));
+        Parser<Function<Cell, Compiler>> slotSetChain = Parsers.sequence(term("."), SYMBOL_OP, term("="), expressionRef.lazy(), (dot, id, eq, value) -> t -> ctx -> {
+            String idWithArity = value.modifyId(id);
+            return new ArrayCell(new Cell[] {new StringCell("set_slot"), t, new StringCell(idWithArity), value.compile(ctx)});
+        });
         Parser<Function<Cell, Compiler>> slotGetChain = Parsers.sequence(term("."), SYMBOL, slotSetOrSlotGetChainRef.lazy().asOptional(), (dot, id, chainOpt) -> t -> new Compiler() {
             @Override
             public Cell compile(CompileContext ctx) {
@@ -205,7 +224,7 @@ public class ReferenceParser {
             }
         });
         Parser<Function<Cell, Compiler>> messageSendChain = Parsers.sequence(
-                term("."), SYMBOL_SELECTOR, term("("), messageArgs, term(")"), slotSetOrSlotGetChainRef.lazy().asOptional(), 
+                term("."), SYMBOL_OP, term("("), messageArgs, term(")"), slotSetOrSlotGetChainRef.lazy().asOptional(), 
                 (dot, id, op, args, cp, chainOpt) -> t -> new Compiler() {
             @Override
             public Cell compile(CompileContext ctx) {
@@ -219,6 +238,11 @@ public class ReferenceParser {
         
         slotSetOrSlotGetChainRef.set(Parsers.or(messageSendChain, slotSetChain, slotGetChain));
         Parser<Compiler> exprChain = Parsers.sequence(target, slotSetOrSlotGetChainRef.lazy().asOptional(), (t, chain) -> new Compiler() {
+            @Override
+            public String modifyId(String id) {
+                return t.modifyId(id);
+            }
+            
             @Override
             public Cell compile(CompileContext ctx) {
                 if(chain.isPresent())
