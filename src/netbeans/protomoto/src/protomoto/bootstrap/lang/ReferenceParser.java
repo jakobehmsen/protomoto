@@ -9,8 +9,10 @@ import org.jparsec.Parser;
 import org.jparsec.Parsers;
 import org.jparsec.Scanners;
 import org.jparsec.Terminals;
+import org.jparsec.Token;
 import org.jparsec.pattern.Patterns;
 import protomoto.ast.ASTFactory;
+import protomoto.ast.ASTParser;
 import protomoto.cell.ArrayCell;
 import protomoto.cell.Cell;
 import protomoto.cell.IntegerCell;
@@ -22,8 +24,20 @@ public class ReferenceParser {
       .toScanner("word")
       .source();
     
+    private static boolean isOperator(char ch) {
+        switch(ch) {
+            case '+':
+            case '-':
+            case '*':
+            case '/':
+                return true;
+        }
+        
+        return false;
+    }
+    
     public static final Terminals TERMS = Terminals
-      .operators("{", "}", ":", ",", "=", "->", "(", ")", ".", "=")
+      .operators("{", "}", ":", ",", "=", "->", "#", "(", ")", ".", "=", "+", "-", "*", "/")
       //.words(Scanners.IDENTIFIER)
       .words(IDENTIFIER)
       .keywords("var")
@@ -35,7 +49,7 @@ public class ReferenceParser {
         TERMS.tokenizer(),
         Terminals.Identifier.TOKENIZER);
     
-    public static Parser<?> term(String... names) {
+    public static Parser<Token> term(String... names) {
         return TERMS.token(names);
     }
 
@@ -45,6 +59,13 @@ public class ReferenceParser {
         Parser<Compiler> STRING = Terminals.StringLiteral.PARSER.map((java.lang.String str) -> ctx ->
             new ArrayCell(new Cell[] {new StringCell("consts"), new StringCell(str)}));
         Parser<String> SYMBOL = Terminals.Identifier.PARSER;
+        Parser<String> SYMBOL_OP = Parsers.or(
+            Terminals.Identifier.PARSER,
+            term("+", "-", "*", "/").map(t -> 
+                t.value().toString() + "$1"));
+        Parser<String> SYMBOL_SELECTOR = Parsers.or(
+            Terminals.Identifier.PARSER,
+            term("+", "-", "*", "/").map(t -> t.value().toString()));
         
         Parser<Compiler> atom = INTEGER.or(STRING);
         
@@ -150,10 +171,28 @@ public class ReferenceParser {
             });
         });
         
-        Parser<Compiler> target = Parsers.or(varDeclareAssign, varAssign, thisMessageSend, varRead, objectLiteral, behavior, atom);
+        Parser<Cell> astParser = ASTParser.create1(new ASTFactory<Cell>() {
+            @Override
+            public Cell createList(List<Cell> items) {
+                return new ArrayCell(items.stream().toArray(s -> new Cell[s]));
+            }
+
+            @Override
+            public Cell createString(String str) {
+                return new StringCell(str);
+            }
+
+            @Override
+            public Cell createInt(int i) {
+                return new IntegerCell(i);
+            }
+        }, TERMS);
+        Parser<Compiler> primitive = Parsers.sequence(term("#"), astParser, (os, ast) -> ctx -> ast);
+        
+        Parser<Compiler> target = Parsers.or(varDeclareAssign, varAssign, thisMessageSend, varRead, objectLiteral, behavior, primitive, atom);
         
         Parser.Reference<Function<Cell, Compiler>> slotSetOrSlotGetChainRef = Parser.newReference();
-        Parser<Function<Cell, Compiler>> slotSetChain = Parsers.sequence(term("."), SYMBOL, term("="), expressionRef.lazy(), (dot, id, eq, value) -> t -> ctx ->
+        Parser<Function<Cell, Compiler>> slotSetChain = Parsers.sequence(term("."), SYMBOL_OP, term("="), expressionRef.lazy(), (dot, id, eq, value) -> t -> ctx ->
             new ArrayCell(new Cell[] {new StringCell("set_slot"), t, new StringCell(id), value.compile(ctx)}));
         Parser<Function<Cell, Compiler>> slotGetChain = Parsers.sequence(term("."), SYMBOL, slotSetOrSlotGetChainRef.lazy().asOptional(), (dot, id, chainOpt) -> t -> new Compiler() {
             @Override
@@ -166,7 +205,7 @@ public class ReferenceParser {
             }
         });
         Parser<Function<Cell, Compiler>> messageSendChain = Parsers.sequence(
-                term("."), SYMBOL, term("("), messageArgs, term(")"), slotSetOrSlotGetChainRef.lazy().asOptional(), 
+                term("."), SYMBOL_SELECTOR, term("("), messageArgs, term(")"), slotSetOrSlotGetChainRef.lazy().asOptional(), 
                 (dot, id, op, args, cp, chainOpt) -> t -> new Compiler() {
             @Override
             public Cell compile(CompileContext ctx) {

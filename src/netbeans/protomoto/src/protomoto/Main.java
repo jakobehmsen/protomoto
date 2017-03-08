@@ -9,6 +9,7 @@ import protomoto.cell.IntegerCell;
 import protomoto.cell.StringCell;
 import protomoto.cell.Cell;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
 import org.jparsec.Parser;
 import org.jparsec.Scanners;
@@ -126,9 +127,20 @@ var x = ...
             "String.test = () -> {'yay'}\n" +
             "String.weeee = 'as'\n" +
             "'afsfds'.test().test().weeee";*/
-        String src2 = 
-            "String.test$1 = (arg) -> {arg}\n" +
-            "'afsfds'.test('this&that')";
+        
+        //java.nio.file.Files.readAllBytes(null)
+        
+        String src2;
+        
+        if(args.length > 0) {
+            String path = args[0];
+            src2 = new String(java.nio.file.Files.readAllBytes(Paths.get(path)));
+        } else {
+            src2 = 
+                "String.test$1 = (arg) -> {arg}\n" +
+                "'afsfds'.test('this&that')";
+        }
+        
         Cell program = cellParser2.parse(src2);
         
         String src = "(push (clone (environment))\n" +

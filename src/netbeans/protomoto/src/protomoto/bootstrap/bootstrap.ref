@@ -1,0 +1,12 @@
+Frame.something$0 = () -> {
+    'Some stuff'
+}
+
+Integer.+ = (other) -> {#(addi (self) (get other))}
+Integer.- = (other) -> {#(subi (self) (get other))}
+Integer.* = (other) -> {#(muli (self) (get other))}
+Integer./ = (other) -> {#(divi (self) (get other))}
+
+//Frame.something()
+
+1.+(3).*(2)
