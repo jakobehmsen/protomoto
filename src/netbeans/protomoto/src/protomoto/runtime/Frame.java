@@ -9,6 +9,7 @@ import protomoto.cell.AbstractCell;
 import protomoto.cell.Cell;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -67,14 +68,14 @@ public class Frame extends AbstractCell {
     }
 
     public void send(int symbolCode, int arity) {
-        Cell[] cells = new Cell[1 + arity];
+        /*Cell[] cells = new Cell[1 + arity];
         popInto(0, 1 + arity, cells);
         Cell receiver = cells[0];
         BehaviorCell behavior = receiver.resolveBehavior(evaluator.getEnvironment(), symbolCode);
         
         Frame sendFrame = behavior.createSendFrame(evaluator, this, arity, cells);
         
-        evaluator.setFrame(sendFrame);
+        evaluator.setFrame(sendFrame);*/
     }
 
     public void respond() {
@@ -209,5 +210,13 @@ public class Frame extends AbstractCell {
 
     public Evaluator getEvalutator() {
         return evaluator;
+    }
+
+    public void replaceInstruction(Instruction instruction) {
+        instructions[ip] = instruction;
+    }
+
+    public Cell peek(int delta) {
+        return stack.get(stack.size() - 1 - delta);
     }
 }

@@ -1,5 +1,8 @@
 package protomoto.runtime;
 
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
 import protomoto.cell.Environment;
 import protomoto.cell.Cell;
 
@@ -40,5 +43,18 @@ public class Evaluator {
 
     public Environment getEnvironment() {
         return environment;
+    }
+    
+    private Hashtable<Integer, List<CallSiteBinding>> tagToCallSiteBindings = new Hashtable<>();
+    
+    public void cache(int tag, Instruction[] instructions, int index) {
+        List<CallSiteBinding> callSiteBindings = tagToCallSiteBindings.computeIfAbsent(tag, t -> new ArrayList<>());
+        callSiteBindings.add(new CallSiteBinding(index, instructions));
+    }
+    
+    public void uncache(int tag) {
+        List<CallSiteBinding> callSiteBindings = tagToCallSiteBindings.computeIfAbsent(tag, t -> new ArrayList<>());
+        callSiteBindings.forEach(x -> x.uncache(tag));
+        tagToCallSiteBindings.remove(tag);
     }
 }

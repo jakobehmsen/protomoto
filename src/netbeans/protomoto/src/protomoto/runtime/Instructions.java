@@ -1,5 +1,6 @@
 package protomoto.runtime;
 
+import java.util.Hashtable;
 import protomoto.cell.ArrayCell;
 import protomoto.cell.BehaviorDescriptor;
 import protomoto.cell.BehaviorCell;
@@ -25,15 +26,54 @@ public class Instructions {
     }
 
     public static Instruction send(int symbolCode, int arity) {
-        return new Instruction() {
+        return new CallSiteInstruction() {
             @Override
             public void execute(Frame frame) {
-                frame.send(symbolCode, arity);
+                Cell receiver = frame.peek(arity);
+                
+                BehaviorCell behavior = receiver.resolveBehavior(frame.getEnvironment(), symbolCode);
+                
+                frame.replaceInstruction(send(symbolCode, arity, receiver.getTag(), behavior));
             }
 
             @Override
             public String toString() {
                 return "send:" + symbolCode + "," + arity;
+            }
+
+            @Override
+            public Instruction uncache(int tag) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+    }
+
+    public static Instruction send(int symbolCode, int arity, int tag0, BehaviorCell behavior0) {
+        return new CallSiteInstruction() {
+            @Override
+            public void execute(Frame frame) {
+                Cell receiver = frame.peek(arity);
+                
+                BehaviorCell behavior;
+                
+                if(receiver.getTag() == tag0) {
+                    behavior = behavior0;
+                } else {
+                    behavior = receiver.resolveBehavior(frame.getEnvironment(), symbolCode);
+                }
+
+                Frame sendFrame = behavior.createSendFrame(frame.getEvalutator(), frame, arity);
+                frame.getEvalutator().setFrame(sendFrame);
+            }
+
+            @Override
+            public String toString() {
+                return "send:" + symbolCode + "," + arity;
+            }
+
+            @Override
+            public Instruction uncache(int tag) {
+                return send(symbolCode, arity);
             }
         };
     }

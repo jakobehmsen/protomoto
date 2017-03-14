@@ -40,6 +40,21 @@ public class BehaviorCell extends AbstractCell {
         
         return frame;
     }
+    
+    public Frame createSendFrame(Evaluator evaluator, Frame sender, int arity) {
+        Frame frame = new Frame(frameProto, evaluator, sender, instructions);
+        
+        sender.popInto(1 + arity, frame);
+        /*frame.push(selfAndArguments[0]);
+        
+        if(arity > 0) {
+            frame.pushFrom(1, arity, selfAndArguments);
+        }*/
+        
+        frame.allocate(variableCount);
+        
+        return frame;
+    }
 
     @Override
     public Cell cloneCell() {
