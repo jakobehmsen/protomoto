@@ -141,14 +141,16 @@ var x = ...
                 "'afsfds'.test('this&that')";
         }
         
-        Cell program = cellParser2.parse(src2);
+        Cell program2 = cellParser2.parse(src2);
         
-        String src = "(push (clone (environment))\n" +
+        String src = "(consti 123)\n";
+        
+        /*String src = "(push (clone (environment))\n" +
             "    (set_slot (peek) 'x' (consti 1))\n" +
             "    (set_slot (peek) 'y' (consti 4))\n" +
-            ")\n";
+            ")\n";*/
         
-        //Cell program = cellParser.parse(src);
+        Cell program = cellParser.parse(src);
         
         /*
         Cell program = cellParser.parse(

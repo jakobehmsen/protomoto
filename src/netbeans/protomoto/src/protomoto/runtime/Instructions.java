@@ -9,6 +9,7 @@ import protomoto.cell.Cell;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import org.objectweb.asm.commons.GeneratorAdapter;
 
 public class Instructions {
     public static Instruction respond() {
@@ -99,6 +100,11 @@ public class Instructions {
             public void execute(Frame frame) {
                 frame.pushi(value);
                 frame.incIP();
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.pushi(value);
             }
 
             @Override
@@ -357,6 +363,11 @@ public class Instructions {
             @Override
             public void execute(Frame frame) {
                 frame.finish(returnCode);
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.finish(returnCode);
             }
 
             @Override

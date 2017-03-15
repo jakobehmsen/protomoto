@@ -1,5 +1,7 @@
 package protomoto.cell;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 import protomoto.cell.ArrayCell;
 import protomoto.cell.BehaviorDescriptor;
 import protomoto.cell.BehaviorCell;
@@ -12,7 +14,18 @@ import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.util.Printer;
+import org.objectweb.asm.util.Textifier;
+import org.objectweb.asm.util.TraceMethodVisitor;
 import protomoto.emit.ASTMapper;
 import protomoto.emit.ASTMappers;
 import protomoto.runtime.Evaluator;
@@ -23,6 +36,8 @@ import protomoto.emit.InstructionEmitters;
 import protomoto.emit.InstructionMapper;
 import protomoto.runtime.Instructions;
 import protomoto.emit.MetaFrame;
+import protomoto.runtime.Jitter;
+import protomoto.runtime.SingleClassLoader;
 
 public class Environment {
     private DefaultCell anyProto;
@@ -67,6 +82,52 @@ public class Environment {
         BehaviorCell behavior = new BehaviorCell(frameProto, instructions, metaFrame.variableCount());
         Frame frame = behavior.createSendFrame(evaluator, null, 0, new Cell[]{anyProto});
         evaluator.setFrame(frame);
+        
+        ClassNode classNode = new ClassNode();
+        classNode.version = Opcodes.V1_8;
+        classNode.access = Opcodes.ACC_PUBLIC;
+        classNode.signature="LGenerated;";
+        classNode.name="Generated";
+        classNode.superName="java/lang/Object";
+        MethodNode methodNode = new MethodNode(
+                Opcodes.ACC_PUBLIC|Opcodes.ACC_STATIC,
+                "eval",
+                Type.getMethodDescriptor(Type.getType(Cell.class), new Type[]{Type.getType(Environment.class)}),
+                null, 
+                null);
+        GeneratorAdapter generator = new GeneratorAdapter(
+                Opcodes.ACC_PUBLIC|Opcodes.ACC_STATIC,
+                new Method("eval", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class)}), 
+                methodNode);
+        Jitter jitter = new Jitter(generator);
+        for (Instruction instruction : instructions) {
+            instruction.emit(jitter);
+        }
+        
+        Printer printer = new Textifier();
+        methodNode.accept(new TraceMethodVisitor(printer));
+        printer.getText().forEach(line -> System.out.print(line));
+        classNode.methods.add(methodNode);
+        
+        try {
+            Class<?> c = new SingleClassLoader(classNode).loadClass("Generated");
+            java.lang.reflect.Method evalMethod = c.getMethod("eval", Environment.class);
+            Cell result = (Cell) evalMethod.invoke(null, this);
+            c.toString();
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchMethodException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SecurityException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvocationTargetException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         return evaluator;
     }
 
