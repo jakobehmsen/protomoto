@@ -14,6 +14,7 @@ import java.util.List;
 import org.jparsec.Parser;
 import org.jparsec.Scanners;
 import protomoto.bootstrap.lang.ReferenceParser;
+import protomoto.runtime.EvaluatorInterface;
 
 public class Main {
     public static void main(String[] args) throws IOException {        
@@ -143,7 +144,9 @@ var x = ...
         
         Cell program2 = cellParser2.parse(src2);
         
-        String src = "(consti 123)\n";
+        String src = 
+            "(set_slot (self) 'field1' (consti 123))\n" +
+            "(set_slot (self) 'field2' (consti 456))\n";
         
         /*String src = "(push (clone (environment))\n" +
             "    (set_slot (peek) 'x' (consti 1))\n" +
@@ -202,7 +205,7 @@ var x = ...
         //Ast ast = new Ast(environment);
         //Cell program = ast.addi(ast.consti(6), ast.consti(7));
         
-        Evaluator evaluator = environment.createEvaluator(program);
+        EvaluatorInterface evaluator = environment.createEvaluator(program);
         int maxProceeds = 1000;
         int proceeds = 0;
         while(!evaluator.isFinished()) {

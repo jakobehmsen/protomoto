@@ -88,6 +88,11 @@ public class Instructions {
             }
 
             @Override
+            public void emit(Jitter jitter) {
+                jitter.load(index);
+            }
+
+            @Override
             public String toString() {
                 return "load:" + index;
             }
@@ -199,8 +204,54 @@ public class Instructions {
         }, "divi");
     }
     
+    public static Instruction setSlotPre(int symbolCode) {
+        //return binaryMod((self, value) -> self.put(symbolCode, value), "set_slot:" + symbolCode);
+        
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                /*Cell[] buffer = new Cell[2];
+
+                frame.popInto(0, 2, buffer);
+                buffer[0].put(symbolCode, buffer[1]);
+                frame.incIP();*/
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.setSlotPre(symbolCode);
+            }
+
+            @Override
+            public String toString() {
+                return "set_slot_pre:" + symbolCode;
+            }
+        };
+    }
+    
     public static Instruction setSlot(int symbolCode) {
-        return binaryMod((self, value) -> self.put(symbolCode, value), "set_slot:" + symbolCode);
+        //return binaryMod((self, value) -> self.put(symbolCode, value), "set_slot:" + symbolCode);
+        
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                Cell[] buffer = new Cell[2];
+
+                frame.popInto(0, 2, buffer);
+                buffer[0].put(symbolCode, buffer[1]);
+                frame.incIP();
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.setSlot(symbolCode);
+            }
+
+            @Override
+            public String toString() {
+                return "set_slot:" + symbolCode;
+            }
+        };
     }
     
     public static Instruction getSlot(int symbolCode) {
@@ -281,32 +332,42 @@ public class Instructions {
         };
     }
     
-    public static Instruction dup2() {
+    public static Instruction dupX1() {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
-                frame.dup2();
+                frame.dupX1();
                 frame.incIP();
             }
 
             @Override
+            public void emit(Jitter jitter) {
+                jitter.dupX1();
+            }
+
+            @Override
             public String toString() {
-                return "dup2";
+                return "dupX1";
             }
         };
     }
     
-    public static Instruction dup3() {
+    public static Instruction dupX2() {
         return new Instruction() {
             @Override
             public void execute(Frame frame) {
-                frame.dup3();
+                frame.dupX2();
                 frame.incIP();
             }
 
             @Override
+            public void emit(Jitter jitter) {
+                jitter.dupX2();
+            }
+
+            @Override
             public String toString() {
-                return "dup3";
+                return "dupX2";
             }
         };
     }

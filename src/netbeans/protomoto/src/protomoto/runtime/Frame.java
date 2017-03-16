@@ -161,11 +161,11 @@ public class Frame extends AbstractCell {
         stack.push(stack.peek());
     }
 
-    public void dup2() {
+    public void dupX1() {
         stack.add(stack.size() - 2, stack.peek());
     }
 
-    public void dup3() {
+    public void dupX2() {
         stack.add(stack.size() - 3, stack.peek());
     }
 

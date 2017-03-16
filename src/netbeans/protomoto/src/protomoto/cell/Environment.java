@@ -36,6 +36,7 @@ import protomoto.emit.InstructionEmitters;
 import protomoto.emit.InstructionMapper;
 import protomoto.runtime.Instructions;
 import protomoto.emit.MetaFrame;
+import protomoto.runtime.EvaluatorInterface;
 import protomoto.runtime.Jitter;
 import protomoto.runtime.SingleClassLoader;
 
@@ -72,7 +73,7 @@ public class Environment {
         }, 0));
     }
 
-    public Evaluator createEvaluator(Cell ast) {
+    public EvaluatorInterface createEvaluator(Cell ast) {
         Evaluator evaluator = new Evaluator(this);
         MetaFrame metaFrame = new MetaFrame();
         ArrayList<String> errors = new ArrayList<>();
@@ -92,12 +93,12 @@ public class Environment {
         MethodNode methodNode = new MethodNode(
                 Opcodes.ACC_PUBLIC|Opcodes.ACC_STATIC,
                 "eval",
-                Type.getMethodDescriptor(Type.getType(Cell.class), new Type[]{Type.getType(Environment.class)}),
+                Type.getMethodDescriptor(Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}),
                 null, 
                 null);
         GeneratorAdapter generator = new GeneratorAdapter(
                 Opcodes.ACC_PUBLIC|Opcodes.ACC_STATIC,
-                new Method("eval", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class)}), 
+                new Method("eval", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}), 
                 methodNode);
         Jitter jitter = new Jitter(generator);
         for (Instruction instruction : instructions) {
@@ -111,24 +112,57 @@ public class Environment {
         
         try {
             Class<?> c = new SingleClassLoader(classNode).loadClass("Generated");
-            java.lang.reflect.Method evalMethod = c.getMethod("eval", Environment.class);
-            Cell result = (Cell) evalMethod.invoke(null, this);
-            c.toString();
+            java.lang.reflect.Method evalMethod = c.getMethod("eval", Environment.class, Cell.class);
+            
+            return new EvaluatorInterface() {
+                private Cell response;
+                private boolean isFinished = false;
+
+                @Override
+                public boolean isFinished() {
+                    return isFinished;
+                }
+
+                @Override
+                public void proceed() {
+                    try {
+                        response = (Cell) evalMethod.invoke(null, Environment.this, getAnyProto());
+                        isFinished = true;
+                    } catch (IllegalAccessException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (IllegalArgumentException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (InvocationTargetException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+
+                @Override
+                public int getReturnCode() {
+                    return 0;
+                }
+
+                @Override
+                public Cell getResponse() {
+                    return response;
+                }
+            };
+            
+            /*Cell result = (Cell) evalMethod.invoke(null, this, getAnyProto());
+            c.toString();*/
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         } catch (NoSuchMethodException ex) {
             Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         } catch (SecurityException ex) {
             Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IllegalArgumentException ex) {
-            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvocationTargetException ex) {
             Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        return evaluator;
+        return null;
+        
+        //return evaluator;
     }
 
     public DefaultCell getAnyProto() {
@@ -233,10 +267,11 @@ public class Environment {
                 Cell value = ast.get(3);
                 
                 mapExpression.accept(receiver);
+                emitters.add(InstructionEmitters.single(Instructions.setSlotPre(symbolCode)));
                 mapExpression.accept(value);
                 
                 if(asExpression) {
-                    emitters.add(InstructionEmitters.single(Instructions.dup2()));
+                    emitters.add(InstructionEmitters.single(Instructions.dupX2()));
                 }
                 
                 emitters.add(InstructionEmitters.single(Instructions.setSlot(symbolCode)));
@@ -270,7 +305,7 @@ public class Environment {
                 mapExpression.accept(value);
                 
                 if(asExpression) {
-                    emitters.add(InstructionEmitters.single(Instructions.dup3()));
+                    emitters.add(InstructionEmitters.single(Instructions.dupX2()));
                 }
                 
                 emitters.add(InstructionEmitters.single(Instructions.arraySet()));
