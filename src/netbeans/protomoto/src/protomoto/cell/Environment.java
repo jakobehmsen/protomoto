@@ -37,6 +37,8 @@ import protomoto.emit.InstructionMapper;
 import protomoto.runtime.Instructions;
 import protomoto.emit.MetaFrame;
 import protomoto.runtime.EvaluatorInterface;
+import protomoto.runtime.Hotspot0;
+import protomoto.runtime.HotspotStrategy;
 import protomoto.runtime.Jitter;
 import protomoto.runtime.SingleClassLoader;
 
@@ -72,6 +74,31 @@ public class Environment {
             Instructions.finish(1)
         }, 0));
     }
+    
+    private HotspotStrategy hotspotStrategy = new HotspotStrategy() {
+        @Override
+        public Class<?> getHotspotInterface(int arity) {
+            if(arity == 0) {
+                return Hotspot0.class;
+            }
+            
+            return null;
+        }
+
+        @Override
+        public Object newHotspot(int symbolCode, int arity) {
+            if(arity == 0) {
+                return new Hotspot0() {
+                    @Override
+                    public Cell evaluate(Environment environment, Cell self) {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+                };
+            }
+            
+            return null;
+        }
+    };
 
     public EvaluatorInterface createEvaluator(Cell ast) {
         Evaluator evaluator = new Evaluator(this);
@@ -90,20 +117,23 @@ public class Environment {
         classNode.signature="LGenerated;";
         classNode.name="Generated";
         classNode.superName="java/lang/Object";
+        classNode.interfaces.add(Type.getType(hotspotStrategy.getHotspotInterface(0)).getInternalName());
         MethodNode methodNode = new MethodNode(
-                Opcodes.ACC_PUBLIC|Opcodes.ACC_STATIC,
-                "eval",
+                Opcodes.ACC_PUBLIC,
+                "evaluate",
                 Type.getMethodDescriptor(Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}),
                 null, 
                 null);
         GeneratorAdapter generator = new GeneratorAdapter(
-                Opcodes.ACC_PUBLIC|Opcodes.ACC_STATIC,
-                new Method("eval", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}), 
+                Opcodes.ACC_PUBLIC,
+                new Method("evaluate", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}), 
                 methodNode);
-        Jitter jitter = new Jitter(generator);
+        
+        Jitter jitter = new Jitter(hotspotStrategy, classNode, generator);
         for (Instruction instruction : instructions) {
             instruction.emit(jitter);
         }
+        jitter.end();
         
         Printer printer = new Textifier();
         methodNode.accept(new TraceMethodVisitor(printer));
@@ -111,8 +141,9 @@ public class Environment {
         classNode.methods.add(methodNode);
         
         try {
-            Class<?> c = new SingleClassLoader(classNode).loadClass("Generated");
-            java.lang.reflect.Method evalMethod = c.getMethod("eval", Environment.class, Cell.class);
+            Class<Hotspot0> c = (Class<Hotspot0>) new SingleClassLoader(classNode).loadClass("Generated");
+            Hotspot0 hotspot = c.getConstructor(HotspotStrategy.class).newInstance(hotspotStrategy);
+            //java.lang.reflect.Method evalMethod = c.getMethod("eval", Environment.class, Cell.class);
             
             return new EvaluatorInterface() {
                 private Cell response;
@@ -125,7 +156,9 @@ public class Environment {
 
                 @Override
                 public void proceed() {
-                    try {
+                    response = hotspot.evaluate(Environment.this, ast);
+                    isFinished = true;
+                    /*try {
                         response = (Cell) evalMethod.invoke(null, Environment.this, getAnyProto());
                         isFinished = true;
                     } catch (IllegalAccessException ex) {
@@ -134,7 +167,7 @@ public class Environment {
                         Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
                     } catch (InvocationTargetException ex) {
                         Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
-                    }
+                    }*/
                 }
 
                 @Override
@@ -157,6 +190,12 @@ public class Environment {
         } catch (SecurityException ex) {
             Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IllegalArgumentException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvocationTargetException ex) {
             Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         }
         
@@ -241,6 +280,8 @@ public class Environment {
                 StringCell name = (StringCell) ast.get(2);
                 int symbolCode = getSymbolCode(name.string);
                 int arity = ast.length() - 3;
+                
+                emitters.add(InstructionEmitters.single(Instructions.preSend(symbolCode, arity)));
                 
                 mapExpression.accept(receiver);
                 

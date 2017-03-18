@@ -26,6 +26,30 @@ public class Instructions {
         };
     }
 
+    public static Instruction preSend(int symbolCode, int arity) {
+        return new CallSiteInstruction() {
+            @Override
+            public void execute(Frame frame) {
+                
+            }
+
+            @Override
+            public String toString() {
+                return "preSend:" + symbolCode + "," + arity;
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.preSend(symbolCode, arity);
+            }
+
+            @Override
+            public Instruction uncache(int tag) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+    }
+
     public static Instruction send(int symbolCode, int arity) {
         return new CallSiteInstruction() {
             @Override
@@ -40,6 +64,11 @@ public class Instructions {
             @Override
             public String toString() {
                 return "send:" + symbolCode + "," + arity;
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.send(symbolCode, arity);
             }
 
             @Override

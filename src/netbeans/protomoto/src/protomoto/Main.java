@@ -14,10 +14,13 @@ import java.util.List;
 import org.jparsec.Parser;
 import org.jparsec.Scanners;
 import protomoto.bootstrap.lang.ReferenceParser;
+import protomoto.cell.BehaviorCell;
 import protomoto.runtime.EvaluatorInterface;
+import protomoto.runtime.Instruction;
+import protomoto.runtime.Instructions;
 
-public class Main {
-    public static void main(String[] args) throws IOException {        
+public class Main {    
+    public static void main(String[] args) throws IOException {
         Environment environment = new Environment();
         
         ASTFactory<Cell> cellFactory = new ASTFactory<Cell>() {
@@ -131,6 +134,13 @@ var x = ...
         
         //java.nio.file.Files.readAllBytes(null)
         
+        //environment.getIntegerProto()
+        
+        environment.getAnyProto().put(environment.getSymbolCode("test"), new BehaviorCell(environment.getFrameProto(), new Instruction[]{
+            Instructions.pushs("Hi there"),
+            Instructions.respond()
+        }, 0));
+        
         String src2;
         
         if(args.length > 0) {
@@ -145,8 +155,11 @@ var x = ...
         Cell program2 = cellParser2.parse(src2);
         
         String src = 
+            "(send (self) 'test')\n";
+        
+        /*String src = 
             "(set_slot (self) 'field1' (consti 123))\n" +
-            "(set_slot (self) 'field2' (consti 456))\n";
+            "(set_slot (self) 'field2' (consti 456))\n";*/
         
         /*String src = "(push (clone (environment))\n" +
             "    (set_slot (peek) 'x' (consti 1))\n" +
