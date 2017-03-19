@@ -1,10 +1,16 @@
 package protomoto.cell;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import protomoto.runtime.Evaluator;
 import protomoto.runtime.Frame;
 import protomoto.runtime.Instruction;
 import protomoto.cell.AbstractCell;
 import protomoto.cell.Cell;
+import protomoto.runtime.Hotspot0;
+import protomoto.runtime.HotspotStrategy;
+import protomoto.runtime.Jitter;
 
 public class BehaviorCell extends AbstractCell {
     private Cell frameProto;
@@ -59,5 +65,32 @@ public class BehaviorCell extends AbstractCell {
     @Override
     public Cell cloneCell() {
         return new BehaviorCell(frameProto, instructions, variableCount);
+    }
+    
+    private Object hotspot;
+
+    public Object getHotspot(Environment environment, int arity) {
+        if(hotspot == null) {
+            try {
+                Jitter jitter = new Jitter(environment.getHotspotStrategy());
+
+                jitter.emit(instructions);
+
+                Class<?> hotspotClass = jitter.compileClass();
+                hotspot = hotspotClass.getConstructor(HotspotStrategy.class).newInstance(environment.getHotspotStrategy());
+            } catch (InstantiationException ex) {
+                Logger.getLogger(BehaviorCell.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(BehaviorCell.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(BehaviorCell.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (InvocationTargetException ex) {
+                Logger.getLogger(BehaviorCell.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (NoSuchMethodException ex) {
+                Logger.getLogger(BehaviorCell.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        return hotspot;
     }
 }

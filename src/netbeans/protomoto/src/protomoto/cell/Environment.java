@@ -91,7 +91,13 @@ public class Environment {
                 return new Hotspot0() {
                     @Override
                     public Cell evaluate(Environment environment, Cell self) {
-                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                        BehaviorCell behavior = self.resolveBehavior(environment, symbolCode);
+                        // Could the Environment, this HotspotStrategy relates to, be used here instead?
+                        // I.e.: Hotspot0 behaviorHotspot = (Hotspot0) behavior.getHotspot(Environment.this, arity);
+                        // Then one less argument is necessary for hotspots? Or...?
+                        Hotspot0 behaviorHotspot = (Hotspot0) behavior.getHotspot(environment, arity);
+                        return behaviorHotspot.evaluate(environment, self);
+                        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
                 };
             }
@@ -111,14 +117,14 @@ public class Environment {
         Frame frame = behavior.createSendFrame(evaluator, null, 0, new Cell[]{anyProto});
         evaluator.setFrame(frame);
         
-        ClassNode classNode = new ClassNode();
+        /*ClassNode classNode = new ClassNode();
         classNode.version = Opcodes.V1_8;
         classNode.access = Opcodes.ACC_PUBLIC;
         classNode.signature="LGenerated;";
         classNode.name="Generated";
         classNode.superName="java/lang/Object";
-        classNode.interfaces.add(Type.getType(hotspotStrategy.getHotspotInterface(0)).getInternalName());
-        MethodNode methodNode = new MethodNode(
+        classNode.interfaces.add(Type.getType(hotspotStrategy.getHotspotInterface(0)).getInternalName());*/
+        /*MethodNode methodNode = new MethodNode(
                 Opcodes.ACC_PUBLIC,
                 "evaluate",
                 Type.getMethodDescriptor(Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}),
@@ -127,21 +133,19 @@ public class Environment {
         GeneratorAdapter generator = new GeneratorAdapter(
                 Opcodes.ACC_PUBLIC,
                 new Method("evaluate", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}), 
-                methodNode);
+                methodNode);*/
         
-        Jitter jitter = new Jitter(hotspotStrategy, classNode, generator);
-        for (Instruction instruction : instructions) {
-            instruction.emit(jitter);
-        }
-        jitter.end();
+        Jitter jitter = new Jitter(hotspotStrategy);
         
-        Printer printer = new Textifier();
+        jitter.emit(instructions);
+        
+        /*Printer printer = new Textifier();
         methodNode.accept(new TraceMethodVisitor(printer));
-        printer.getText().forEach(line -> System.out.print(line));
-        classNode.methods.add(methodNode);
+        printer.getText().forEach(line -> System.out.print(line));*/
+        //classNode.methods.add(methodNode);
         
         try {
-            Class<Hotspot0> c = (Class<Hotspot0>) new SingleClassLoader(classNode).loadClass("Generated");
+            Class<Hotspot0> c = (Class<Hotspot0>) jitter.compileClass();
             Hotspot0 hotspot = c.getConstructor(HotspotStrategy.class).newInstance(hotspotStrategy);
             //java.lang.reflect.Method evalMethod = c.getMethod("eval", Environment.class, Cell.class);
             
@@ -183,8 +187,6 @@ public class Environment {
             
             /*Cell result = (Cell) evalMethod.invoke(null, this, getAnyProto());
             c.toString();*/
-        } catch (ClassNotFoundException ex) {
-            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         } catch (NoSuchMethodException ex) {
             Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
         } catch (SecurityException ex) {
@@ -496,5 +498,9 @@ public class Environment {
 
     public Cell getFrameProto() {
         return frameProto;
+    }
+
+    public HotspotStrategy getHotspotStrategy() {
+        return hotspotStrategy;
     }
 }

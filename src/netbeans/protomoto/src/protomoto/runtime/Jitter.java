@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.Stack;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -16,6 +18,7 @@ import org.objectweb.asm.tree.MethodNode;
 import protomoto.cell.Cell;
 import protomoto.cell.Environment;
 import protomoto.cell.IntegerCell;
+import protomoto.cell.StringCell;
 
 public class Jitter {
     //private Stack<CellDescriptor> stack = new Stack<>();
@@ -24,10 +27,28 @@ public class Jitter {
     private GeneratorAdapter evalAdapter;
     private GeneratorAdapter initAdapter;
 
-    public Jitter(HotspotStrategy hotspotStrategy, ClassNode classNode, GeneratorAdapter adapter) {
+    public Jitter(HotspotStrategy hotspotStrategy) {
         this.hotspotStrategy = hotspotStrategy;
-        this.classNode = classNode;
-        this.evalAdapter = adapter;
+        
+        classNode = new ClassNode();
+        classNode.version = Opcodes.V1_8;
+        classNode.access = Opcodes.ACC_PUBLIC;
+        classNode.signature="LGenerated;";
+        classNode.name="Generated";
+        classNode.superName="java/lang/Object";
+        classNode.interfaces.add(Type.getType(hotspotStrategy.getHotspotInterface(0)).getInternalName());
+        
+        MethodNode methodNode = new MethodNode(
+                Opcodes.ACC_PUBLIC,
+                "evaluate",
+                Type.getMethodDescriptor(Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}),
+                null, 
+                null);
+        evalAdapter = new GeneratorAdapter(
+                Opcodes.ACC_PUBLIC,
+                new Method("evaluate", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}), 
+                methodNode);
+        classNode.methods.add(methodNode);
         
         MethodNode constructor = new MethodNode(
             Opcodes.ACC_PUBLIC, 
@@ -37,6 +58,17 @@ public class Jitter {
             null);
         classNode.methods.add(constructor);
         initAdapter = new GeneratorAdapter(Opcodes.ACC_PUBLIC, new Method(constructor.name, constructor.desc), constructor);
+        initAdapter.loadThis();
+        initAdapter.invokeConstructor(Type.getType(Object.class), new Method("<init>", "()V"));
+    }
+    
+    public Class<?> compileClass() {
+        try {
+            return new SingleClassLoader(classNode).loadClass("Generated");
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(Jitter.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
     }
 
     public void pushi(int value) {
@@ -83,6 +115,29 @@ public class Jitter {
     public void dupX2() {
         evalAdapter.dupX2();
     }
+
+    public ClassNode getClassNode() {
+        return classNode;
+    }
+
+    public void emit(Instruction[] instructions) {
+        for (Instruction instruction : instructions) {
+            instruction.emit(this);
+        }
+        end();
+    }
+
+    public void pushs(String string) {
+        evalAdapter.loadArg(0); // Load environment
+        evalAdapter.push(string);
+        evalAdapter.invokeVirtual(
+            Type.getType(Environment.class), 
+            new Method("createString", Type.getType(StringCell.class), new Type[]{Type.getType(String.class)}));
+    }
+
+    public void respond() {
+        evalAdapter.returnValue();
+    }
     
     private static class HotspotInfo {
         public int symbolCode;
@@ -104,8 +159,6 @@ public class Jitter {
             null, 
             null
         ));
-        initAdapter.loadThis();
-        initAdapter.invokeConstructor(Type.getType(Object.class), new Method("<init>", "()V"));
         initAdapter.loadThis();
         initAdapter.loadArg(0); // Load hotspotStrategy
         initAdapter.push(symbolCode);
@@ -136,9 +189,15 @@ public class Jitter {
 
     public void send(int symbolCode, int arity) {
         Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
+        Type[] parameterTypes = new Type[2 + arity];
+        parameterTypes[0] = Type.getType(Environment.class); // environment
+        parameterTypes[1] = Type.getType(Cell.class); // self
+        for(int i = 2; i < parameterTypes.length; i++) {
+            parameterTypes[i] = Type.getType(Cell.class);
+        }
         evalAdapter.invokeInterface(
             Type.getType(hotspotClass), 
-            new Method("evaluate", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}));
+            new Method("evaluate", Type.getType(Cell.class), parameterTypes));
     }
     
     public void end() {

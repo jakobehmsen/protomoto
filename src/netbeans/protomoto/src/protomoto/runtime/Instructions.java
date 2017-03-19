@@ -20,6 +20,11 @@ public class Instructions {
             }
 
             @Override
+            public void emit(Jitter jitter) {
+                jitter.respond();
+            }
+
+            @Override
             public String toString() {
                 return "respond";
             }
@@ -473,6 +478,11 @@ public class Instructions {
             public void execute(Frame frame) {
                 frame.pushs(string);
                 frame.incIP();
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.pushs(string);
             }
 
             @Override
