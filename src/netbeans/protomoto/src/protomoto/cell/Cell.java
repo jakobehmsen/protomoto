@@ -3,7 +3,7 @@ package protomoto.cell;
 import protomoto.runtime.Evaluator;
 
 public abstract class Cell {
-    private int tag;
+    public int tag;
     
     public final int getTag() {
         return tag;

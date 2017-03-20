@@ -13,14 +13,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
+import org.objectweb.asm.commons.TableSwitchGenerator;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.Printer;
@@ -54,12 +57,19 @@ public class Environment {
     
     public Environment() {
         anyProto = new DefaultCell(null);
+        anyProto.newTag();
         integerProto = new DefaultCell(anyProto);
+        integerProto.newTag();
         behaviorProto = new DefaultCell(anyProto);
+        behaviorProto.newTag();
         arrayProto = new DefaultCell(anyProto);
+        arrayProto.newTag();
         stringProto = new DefaultCell(anyProto);
+        stringProto.newTag();
         frameProto = new DefaultCell(anyProto);
+        frameProto.newTag();
         nil = new DefaultCell(anyProto);
+        nil.newTag();
         
         anyProto.put(getSymbolCode("Integer"), integerProto);
         anyProto.put(getSymbolCode("Behavior"), behaviorProto);
@@ -75,9 +85,67 @@ public class Environment {
         }, 0));
     }
     
+    public static Object newHotspot(HotspotStrategy hotspotStrategy, int symbolCode, int arity, Map<Integer, Object> hotspotCache) {
+        Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
+        ClassNode hotspotClassNode = new ClassNode();
+        
+        hotspotClassNode = new ClassNode();
+        hotspotClassNode.version = Opcodes.V1_8;
+        hotspotClassNode.access = Opcodes.ACC_PUBLIC;
+        hotspotClassNode.name="Hotspot_" + symbolCode + "_" + arity;
+        hotspotClassNode.signature="L" + hotspotClassNode.name + ";";
+        hotspotClassNode.superName="java/lang/Object";
+        hotspotClassNode.interfaces.add(Type.getType(hotspotClass).getInternalName());
+        
+        String hotspotClassNodeSignature = hotspotClassNode.signature;
+
+        Type[] evalParameterTypes = new Type[2 + arity];
+        evalParameterTypes[0] = Type.getType(Environment.class);
+        evalParameterTypes[1] = Type.getType(Cell.class);
+        for(int i = 0; i < evalParameterTypes.length; i++) {
+            evalParameterTypes[i] = Type.getType(Cell.class);
+        }
+
+        MethodNode evalMethodNode = new MethodNode(
+            Opcodes.ACC_PUBLIC,
+            "evaluate",
+            Type.getMethodDescriptor(Type.getType(Cell.class), evalParameterTypes),
+            null, 
+            null);
+        GeneratorAdapter evalAdapter = new GeneratorAdapter(
+            Opcodes.ACC_PUBLIC,
+            new Method("evaluate", Type.getType(Cell.class), evalParameterTypes), 
+            evalMethodNode);
+        
+        evalAdapter.loadArg(1); // Load self
+        evalAdapter.getField(Type.getType(Cell.class), "tag", Type.getType(String.class));
+        
+        evalAdapter.tableSwitch(hotspotCache.keySet().stream().mapToInt(x -> x).toArray(), new TableSwitchGenerator() {
+            @Override
+            public void generateCase(int key, Label end) {
+                // Load behavior from static field access
+                String behaviorFieldName = "behavior" + key;
+                evalAdapter.getStatic(Type.getType(hotspotClassNodeSignature), behaviorFieldName, Type.getType(String.class));
+                
+                evalAdapter.invokeInterface(
+                    Type.getType(hotspotClass), 
+                    new Method("evaluate", Type.getType(Cell.class), evalParameterTypes));
+            }
+
+            @Override
+            public void generateDefault() {
+                // Cache miss, find behavior, add to cache, generate a new hotspot, and replace hotspot usage
+            }
+        });
+        
+        return null;
+    }
+    
     private HotspotStrategy hotspotStrategy = new HotspotStrategy() {
         @Override
         public Class<?> getHotspotInterface(int arity) {
+            ClassNode hotspotInteraceClassNode = new ClassNode();
+            
             if(arity == 0) {
                 return Hotspot0.class;
             }
@@ -87,6 +155,37 @@ public class Environment {
 
         @Override
         public Object newHotspot(int symbolCode, int arity) {
+            /*ClassNode hotspotClassNode = new ClassNode();
+        
+            hotspotClassNode = new ClassNode();
+            hotspotClassNode.version = Opcodes.V1_8;
+            hotspotClassNode.access = Opcodes.ACC_PUBLIC;
+            hotspotClassNode.name="Hotspot_" + symbolCode + "_" + arity;
+            hotspotClassNode.signature="L" + hotspotClassNode.name + ";";
+            hotspotClassNode.superName="java/lang/Object";
+            hotspotClassNode.interfaces.add(Type.getType(hotspotStrategy.getHotspotInterface(0)).getInternalName());
+            
+            Type[] evalParameterTypes = new Type[2 + arity];
+            evalParameterTypes[0] = Type.getType(Environment.class);
+            evalParameterTypes[1] = Type.getType(Cell.class);
+            for(int i = 0; i < evalParameterTypes.length; i++) {
+                evalParameterTypes[i] = Type.getType(Cell.class);
+            }
+            
+            MethodNode evalMethodNode = new MethodNode(
+                Opcodes.ACC_PUBLIC,
+                "evaluate",
+                Type.getMethodDescriptor(Type.getType(Cell.class), evalParameterTypes),
+                null, 
+                null);
+            GeneratorAdapter evalAdapter = new GeneratorAdapter(
+                    Opcodes.ACC_PUBLIC,
+                    new Method("evaluate", Type.getType(Cell.class), evalParameterTypes), 
+                    evalMethodNode);*/
+            
+            Hashtable<Integer, Object> hotspotCache = new Hashtable<>();
+            Object hotspot = Environment.newHotspot(this, symbolCode, arity, hotspotCache);
+            
             if(arity == 0) {
                 return new Hotspot0() {
                     @Override
@@ -215,7 +314,9 @@ public class Environment {
     }
 
     public IntegerCell createInteger(int value) {
-        return new IntegerCell(value);
+        IntegerCell integerCell = new IntegerCell(value);
+        integerCell.setTag(integerProto.getTag());
+        return integerCell;
     }
 
     public DefaultCell getBehaviorProto() {
@@ -251,11 +352,15 @@ public class Environment {
     public ArrayCell createArray(int length) {
         Cell[] items = new Cell[length];
         Arrays.fill(items, 0, length, nil);
-        return new ArrayCell(items);
+        ArrayCell arrayCell = new ArrayCell(items);
+        arrayCell.setTag(arrayProto.getTag());
+        return arrayCell;
     }
 
     public StringCell createString(String string) {
-        return new StringCell(string);
+        StringCell stringCell = new StringCell(string);
+        stringCell.setTag(stringProto.getTag());
+        return stringCell;
     }
     
     public Instruction[] getInstructions(MetaFrame metaFrame, Cell ast, InstructionEmitter endEmitter, List<String> errors) {
