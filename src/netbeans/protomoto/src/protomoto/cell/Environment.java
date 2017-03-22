@@ -1,5 +1,6 @@
 package protomoto.cell;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import protomoto.cell.ArrayCell;
@@ -25,6 +26,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 import org.objectweb.asm.commons.TableSwitchGenerator;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.Printer;
 import org.objectweb.asm.util.Textifier;
@@ -40,6 +42,7 @@ import protomoto.emit.InstructionMapper;
 import protomoto.runtime.Instructions;
 import protomoto.emit.MetaFrame;
 import protomoto.runtime.EvaluatorInterface;
+import protomoto.runtime.Hotspot;
 import protomoto.runtime.Hotspot0;
 import protomoto.runtime.HotspotStrategy;
 import protomoto.runtime.Jitter;
@@ -85,11 +88,13 @@ public class Environment {
         }, 0));
     }
     
+    public interface HotspotCacheMissHandler {
+        Cell handleAndEvaluate(Environment environment, Cell self, Cell[] args);
+    }
+    
     public static Object newHotspot(HotspotStrategy hotspotStrategy, int symbolCode, int arity, Map<Integer, Object> hotspotCache) {
         Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
         ClassNode hotspotClassNode = new ClassNode();
-        
-        hotspotClassNode = new ClassNode();
         hotspotClassNode.version = Opcodes.V1_8;
         hotspotClassNode.access = Opcodes.ACC_PUBLIC;
         hotspotClassNode.name="Hotspot_" + symbolCode + "_" + arity;
@@ -97,12 +102,43 @@ public class Environment {
         hotspotClassNode.superName="java/lang/Object";
         hotspotClassNode.interfaces.add(Type.getType(hotspotClass).getInternalName());
         
+        hotspotClassNode.fields.add(new FieldNode(
+            Opcodes.ACC_PRIVATE|Opcodes.ACC_STATIC, 
+            "hotspotCacheMissHandler", 
+            Type.getDescriptor(HotspotCacheMissHandler.class), 
+            null, 
+            null
+        ));
+        
+        hotspotCache.keySet().forEach(type -> {
+            String behaviorFieldName = "behavior" + type;
+            hotspotClassNode.fields.add(new FieldNode(
+                Opcodes.ACC_PRIVATE|Opcodes.ACC_STATIC, 
+                behaviorFieldName, 
+                Type.getDescriptor(hotspotClass), 
+                null, 
+                null
+            ));
+        });
+        
+        MethodNode constructor = new MethodNode(
+            Opcodes.ACC_PUBLIC, 
+            "<init>", 
+            Type.getMethodDescriptor(Type.VOID_TYPE, new Type[]{}), 
+            null, 
+            null);
+        GeneratorAdapter initAdapter = new GeneratorAdapter(Opcodes.ACC_PUBLIC, new Method(constructor.name, constructor.desc), constructor);
+        initAdapter.loadThis();
+        initAdapter.invokeConstructor(Type.getType(Object.class), new Method("<init>", "()V"));
+        initAdapter.visitInsn(Opcodes.RETURN);
+        hotspotClassNode.methods.add(constructor);
+        
         String hotspotClassNodeSignature = hotspotClassNode.signature;
 
         Type[] evalParameterTypes = new Type[2 + arity];
         evalParameterTypes[0] = Type.getType(Environment.class);
         evalParameterTypes[1] = Type.getType(Cell.class);
-        for(int i = 0; i < evalParameterTypes.length; i++) {
+        for(int i = 2; i < evalParameterTypes.length; i++) {
             evalParameterTypes[i] = Type.getType(Cell.class);
         }
 
@@ -118,14 +154,14 @@ public class Environment {
             evalMethodNode);
         
         evalAdapter.loadArg(1); // Load self
-        evalAdapter.getField(Type.getType(Cell.class), "tag", Type.getType(String.class));
+        evalAdapter.getField(Type.getType(Cell.class), "tag", Type.INT_TYPE);
         
         evalAdapter.tableSwitch(hotspotCache.keySet().stream().mapToInt(x -> x).toArray(), new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
                 // Load behavior from static field access
                 String behaviorFieldName = "behavior" + key;
-                evalAdapter.getStatic(Type.getType(hotspotClassNodeSignature), behaviorFieldName, Type.getType(String.class));
+                evalAdapter.getStatic(Type.getType(hotspotClassNodeSignature), behaviorFieldName, Type.getType(hotspotClass));
                 
                 evalAdapter.invokeInterface(
                     Type.getType(hotspotClass), 
@@ -135,8 +171,112 @@ public class Environment {
             @Override
             public void generateDefault() {
                 // Cache miss, find behavior, add to cache, generate a new hotspot, and replace hotspot usage
+                
+                /*
+                Cell[] args = new Cell[arity];
+                // Populate args
+                return hotspotCacheMissHandler.handleAndEvaluate(environment, self, args);
+                */
+                
+                int argsLocal = evalAdapter.newLocal(Type.getType("[L" + Cell.class.getName().replace(".", "/") + ";"));
+                evalAdapter.push(arity);
+                evalAdapter.newArray(Type.getType(Cell.class));
+                for(int i = 0; i < arity; i++) {
+                    int argIndex = i + 2;
+                    evalAdapter.dup();
+                    evalAdapter.push(i);
+                    evalAdapter.loadArg(argIndex);
+                    evalAdapter.box(Type.getType(Cell.class));
+                    evalAdapter.arrayStore(Type.getType(Cell.class));
+                }
+                evalAdapter.storeLocal(argsLocal);
+                
+                evalAdapter.getStatic(Type.getType(hotspotClassNodeSignature), "hotspotCacheMissHandler", Type.getType(HotspotCacheMissHandler.class));
+                evalAdapter.loadArg(0); // Load environment
+                evalAdapter.loadArg(1); // Load self
+                evalAdapter.loadLocal(argsLocal);
+                evalAdapter.invokeInterface(
+                    Type.getType(HotspotCacheMissHandler.class), 
+                    new Method("handleAndEvaluate", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class), Type.getType("[L" + Cell.class.getName().replace(".", "/") + ";")}));
+                evalAdapter.returnValue();
             }
         });
+        
+        hotspotClassNode.methods.add(evalMethodNode);
+        
+        try {
+            Class<?> hotspotClassGenerated = new SingleClassLoader(hotspotClassNode).loadClass(hotspotClassNode.name);
+            Field hotspotCacheMissHandlerField = hotspotClassGenerated.getDeclaredField("hotspotCacheMissHandler");
+            hotspotCacheMissHandlerField.setAccessible(true);
+            hotspotCacheMissHandlerField.set(null, new HotspotCacheMissHandler() {
+                @Override
+                public Cell handleAndEvaluate(Environment environment, Cell self, Cell[] args) {
+                    BehaviorCell behavior = self.resolveBehavior(environment, symbolCode);
+                    
+                    Hotspot hotspot = behavior.getHotspot(environment, arity);
+                    hotspotCache.put(self.tag, hotspot);
+                    
+                    Class<?>[] parameterTypes = new Class<?>[2 + hotspot.getArity()];
+                    Object[] reflectionArgs = new Object[2 + hotspot.getArity()];
+                    parameterTypes[0] = Environment.class;
+                    reflectionArgs[0] = environment;
+                    parameterTypes[1] = Cell.class;
+                    reflectionArgs[1] = self;
+                    for(int i = 2; i < parameterTypes.length; i++) {
+                        parameterTypes[i] = Cell.class;
+                        reflectionArgs[i] = args[i];
+                    }
+                    
+                    try {
+                        java.lang.reflect.Method evalMethod = hotspot.getClass().getMethod("evaluate", parameterTypes);
+                        return (Cell) evalMethod.invoke(hotspot, reflectionArgs);
+                    } catch (NoSuchMethodException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (SecurityException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (IllegalAccessException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (IllegalArgumentException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (InvocationTargetException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    
+                    return null;
+                }
+            });
+        
+            hotspotCache.forEach((type, object) -> {
+                String behaviorFieldName = "behavior" + type;
+                try {
+                    Field behaviorField = hotspotClassGenerated.getDeclaredField(behaviorFieldName);
+                    behaviorField.setAccessible(true);
+                    behaviorField.set(null, object);
+                } catch (NoSuchFieldException ex) {
+                    Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (SecurityException ex) {
+                    Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalArgumentException ex) {
+                    Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalAccessException ex) {
+                    Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+            
+            return hotspotClassGenerated.newInstance();
+        } catch (NoSuchFieldException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SecurityException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+        }
         
         return null;
     }
@@ -184,9 +324,9 @@ public class Environment {
                     evalMethodNode);*/
             
             Hashtable<Integer, Object> hotspotCache = new Hashtable<>();
-            Object hotspot = Environment.newHotspot(this, symbolCode, arity, hotspotCache);
+            return Environment.newHotspot(this, symbolCode, arity, hotspotCache);
             
-            if(arity == 0) {
+            /*if(arity == 0) {
                 return new Hotspot0() {
                     @Override
                     public Cell evaluate(Environment environment, Cell self) {
@@ -201,9 +341,13 @@ public class Environment {
                 };
             }
             
-            return null;
+            return null;*/
         }
     };
+    
+    public HotspotStrategy getHotspotStrategy() {
+        return hotspotStrategy;
+    }
 
     public EvaluatorInterface createEvaluator(Cell ast) {
         Evaluator evaluator = new Evaluator(this);
@@ -603,9 +747,5 @@ public class Environment {
 
     public Cell getFrameProto() {
         return frameProto;
-    }
-
-    public HotspotStrategy getHotspotStrategy() {
-        return hotspotStrategy;
     }
 }

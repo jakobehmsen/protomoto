@@ -3,6 +3,7 @@ package protomoto.runtime;
 import protomoto.cell.Cell;
 import protomoto.cell.Environment;
 
-public interface Hotspot0 {
+public interface Hotspot0 extends Hotspot {
+    default int getArity() { return 0; }
     Cell evaluate(Environment environment, Cell self);
 }

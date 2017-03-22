@@ -183,6 +183,7 @@ public class Jitter {
         
         evalAdapter.loadThis();
         Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
+        // Could this be a static field?
         evalAdapter.getField(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));
         evalAdapter.loadArg(0); // Load environment
     }
