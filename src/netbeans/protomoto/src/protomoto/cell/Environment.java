@@ -88,6 +88,10 @@ public class Environment {
         }, 0));
     }
     
+    public interface CallSiteContainer {
+        void set(int callSiteId, Object hotspot);
+    }
+    
     public interface HotspotCacheMissHandler {
         Cell handleAndEvaluate(Environment environment, Cell self, Cell[] args);
     }
@@ -342,6 +346,31 @@ public class Environment {
             }
             
             return null;*/
+        }
+
+        @Override
+        public void bind(CallSiteContainer callSite, int callSiteId, int symbolCode, int arity) {
+            HotspotStrategy hotspotStrategy = this;
+            Hashtable<Integer, Object> hotspotCache = new Hashtable<Integer, Object>() {
+                @Override
+                public synchronized Object put(Integer key, Object value) {
+                    Object prev = super.put(key, value);
+                    Object hotspot = Environment.newHotspot(hotspotStrategy, symbolCode, arity, this);
+                    callSite.set(callSiteId, hotspot);
+                    return prev;
+                }
+
+                @Override
+                public synchronized Object remove(Object key) {
+                    Object removed = super.remove(key);
+                    Object hotspot = Environment.newHotspot(hotspotStrategy, symbolCode, arity, this);
+                    callSite.set(callSiteId, hotspot);
+                    return removed;
+                }
+            };
+            
+            Object hotspot = Environment.newHotspot(this, symbolCode, arity, hotspotCache);
+            callSite.set(callSiteId, hotspot);
         }
     };
     
