@@ -32,7 +32,7 @@ public class Jitter {
     private GeneratorAdapter initAdapter;
     private GeneratorAdapter setAdapter;
 
-    public Jitter(HotspotStrategy hotspotStrategy) {
+    public Jitter(HotspotStrategy hotspotStrategy, int arity) {
         this.hotspotStrategy = hotspotStrategy;
         
         classNode = new ClassNode();
@@ -41,13 +41,20 @@ public class Jitter {
         classNode.signature="LGenerated;";
         classNode.name="Generated";
         classNode.superName="java/lang/Object";
-        classNode.interfaces.add(Type.getType(hotspotStrategy.getHotspotInterface(0)).getInternalName());
+        classNode.interfaces.add(Type.getType(hotspotStrategy.getHotspotInterface(arity)).getInternalName());
         classNode.interfaces.add(Type.getType(CallSiteContainer.class).getInternalName());
+        
+        Type[] parameterTypes = new Type[2 + arity];
+        parameterTypes[0] = Type.getType(Environment.class);
+        parameterTypes[1] = Type.getType(Cell.class);
+        for(int i = 2; i < parameterTypes.length; i++) {
+            parameterTypes[i] = Type.getType(Cell.class);
+        }
         
         MethodNode evalMethodNode = new MethodNode(
             Opcodes.ACC_PUBLIC,
             "evaluate",
-            Type.getMethodDescriptor(Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}),
+            Type.getMethodDescriptor(Type.getType(Cell.class), parameterTypes),
             null, 
             null);
         evalAdapter = new GeneratorAdapter(
@@ -177,6 +184,10 @@ public class Jitter {
     public void loadVar(String name) {
         int index = varNameToIndex.get(name);
         evalAdapter.loadLocal(index);
+    }
+
+    public void loadArg(int index) {
+        evalAdapter.loadArg(2 + index);
     }
     
     private class HotspotField {

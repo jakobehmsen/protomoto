@@ -17,11 +17,13 @@ public class BehaviorCell extends AbstractCell {
     private Cell frameProto;
     private Instruction[] instructions;
     private int variableCount;
+    private String[] parameters;
 
-    public BehaviorCell(Cell frameProto, Instruction[] instructions, int variableCount) {
+    public BehaviorCell(Cell frameProto, Instruction[] instructions, int variableCount, String[] parameters) {
         this.frameProto = frameProto;
         this.instructions = instructions;
         this.variableCount = variableCount;
+        this.parameters = parameters;
     }
 
     @Override
@@ -65,7 +67,7 @@ public class BehaviorCell extends AbstractCell {
 
     @Override
     public Cell cloneCell() {
-        return new BehaviorCell(frameProto, instructions, variableCount);
+        return new BehaviorCell(frameProto, instructions, variableCount, parameters);
     }
     
     private Hotspot hotspot;
@@ -73,7 +75,7 @@ public class BehaviorCell extends AbstractCell {
     public Hotspot getHotspot(Environment environment, int arity) {
         if(hotspot == null) {
             try {
-                Jitter jitter = new Jitter(environment.getHotspotStrategy());
+                Jitter jitter = new Jitter(environment.getHotspotStrategy(), arity);
 
                 jitter.emit(instructions);
 

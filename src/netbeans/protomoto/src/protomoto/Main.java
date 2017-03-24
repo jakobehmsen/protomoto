@@ -136,10 +136,14 @@ var x = ...
         
         //environment.getIntegerProto()
         
-        environment.getAnyProto().put(environment.getSymbolCode("test"), new BehaviorCell(environment.getFrameProto(), new Instruction[]{
+        environment.getAnyProto().put(environment.getSymbolCode("test$0"), new BehaviorCell(environment.getFrameProto(), new Instruction[]{
             Instructions.pushs("Hi there"),
             Instructions.respond()
-        }, 0));
+        }, 0, new String[]{}));
+        environment.getAnyProto().put(environment.getSymbolCode("test$1"), new BehaviorCell(environment.getFrameProto(), new Instruction[]{
+            Instructions.loadArg(0),
+            Instructions.respond()
+        }, 0, new String[]{"arg1"}));
         
         String src2;
         
@@ -155,8 +159,8 @@ var x = ...
         Cell program2 = cellParser2.parse(src2);
         
         String src = 
-            "(var x (send (self) 'test'))\n" + 
-            "(send (self) 'test')\n" + 
+            "(var x (send (self) 'test$1' (consts 'Bla')))\n" + 
+            "(send (self) 'test$0')\n" + 
             "(get x)\n";
         
         /*String src = 

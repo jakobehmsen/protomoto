@@ -239,6 +239,25 @@ public class Instructions {
             }
         };
     }
+
+    public static Instruction loadArg(int index) {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.loadArg(index);
+            }
+
+            @Override
+            public String toString() {
+                return "load-arg:" + index;
+            }
+        };
+    }
     
     private interface BinaryInstruction<T> {
         void execute(Frame frame, T lhs, T rhs);

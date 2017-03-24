@@ -44,6 +44,7 @@ import protomoto.emit.MetaFrame;
 import protomoto.runtime.EvaluatorInterface;
 import protomoto.runtime.Hotspot;
 import protomoto.runtime.Hotspot0;
+import protomoto.runtime.Hotspot1;
 import protomoto.runtime.HotspotStrategy;
 import protomoto.runtime.Jitter;
 import protomoto.runtime.SingleClassLoader;
@@ -83,9 +84,10 @@ public class Environment {
         
         int primitiveErrorOccurredSymbolCode = getSymbolCode("primitiveErrorOccurred");
         frameProto.put(primitiveErrorOccurredSymbolCode, new BehaviorCell(frameProto, new Instruction[] {
-            Instructions.load(1),
+            //Instructions.load(1),
+            Instructions.load("error"),
             Instructions.finish(1)
-        }, 0));
+        }, 0, new String[]{"error"}));
     }
     
     public interface CallSiteContainer {
@@ -233,7 +235,7 @@ public class Environment {
                     reflectionArgs[1] = self;
                     for(int i = 2; i < parameterTypes.length; i++) {
                         parameterTypes[i] = Cell.class;
-                        reflectionArgs[i] = args[i];
+                        reflectionArgs[i] = args[i - 2];
                     }
                     
                     try {
@@ -291,15 +293,50 @@ public class Environment {
     }
     
     private HotspotStrategy hotspotStrategy = new HotspotStrategy() {
+        private Hashtable<Integer, Class<?>> hotspotInterfaces = new Hashtable<>();
+        
         @Override
         public Class<?> getHotspotInterface(int arity) {
-            ClassNode hotspotInteraceClassNode = new ClassNode();
-            
             if(arity == 0) {
                 return Hotspot0.class;
+            } else if(arity == 1) {
+                return Hotspot1.class;
+            }  else {
+                return hotspotInterfaces.computeIfAbsent(arity, a -> {
+                    ClassNode hotspotInterfaceNode = new ClassNode();
+                    
+                    hotspotInterfaceNode.version = Opcodes.V1_8;
+                    hotspotInterfaceNode.access = Opcodes.ACC_PUBLIC|Opcodes.ACC_ABSTRACT|Opcodes.ACC_INTERFACE;
+                    hotspotInterfaceNode.name = "Hotspot" + arity;
+                    hotspotInterfaceNode.signature="L" + hotspotInterfaceNode.name + ";";
+                    hotspotInterfaceNode.superName="java/lang/Object";
+                    
+                    Type[] evalParameterTypes = new Type[2 + arity];
+                    evalParameterTypes[0] = Type.getType(Environment.class);
+                    evalParameterTypes[1] = Type.getType(Cell.class);
+                    for(int i = 2; i < evalParameterTypes.length; i++) {
+                        evalParameterTypes[i] = Type.getType(Cell.class);
+                    }
+                    
+                    MethodNode evalMethodNode = new MethodNode(
+                        Opcodes.ACC_PUBLIC|Opcodes.ACC_ABSTRACT,
+                        "evaluate",
+                        Type.getMethodDescriptor(Type.getType(Cell.class), evalParameterTypes),
+                        null, 
+                        null);
+                    
+                    hotspotInterfaceNode.methods.add(evalMethodNode);
+                    
+                    try {
+                        return new SingleClassLoader(hotspotInterfaceNode)
+                            .loadClass(hotspotInterfaceNode.name);
+                    } catch (ClassNotFoundException ex) {
+                        Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    
+                    return null;
+                });
             }
-            
-            return null;
         }
 
         @Override
@@ -385,12 +422,12 @@ public class Environment {
 
     public EvaluatorInterface createEvaluator(Cell ast) {
         Evaluator evaluator = new Evaluator(this);
-        MetaFrame metaFrame = new MetaFrame();
+        MetaFrame metaFrame = new MetaFrame(new String[]{});
         ArrayList<String> errors = new ArrayList<>();
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.finish(0)), errors);
         if(errors.size() > 0)
             throw new IllegalArgumentException("Compile errors:\n" + errors.stream().collect(Collectors.joining("\n")));
-        BehaviorCell behavior = new BehaviorCell(frameProto, instructions, metaFrame.variableCount());
+        BehaviorCell behavior = new BehaviorCell(frameProto, instructions, metaFrame.variableCount(), new String[]{});
         Frame frame = behavior.createSendFrame(evaluator, null, 0, new Cell[]{anyProto});
         evaluator.setFrame(frame);
         
@@ -412,7 +449,7 @@ public class Environment {
                 new Method("evaluate", Type.getType(Cell.class), new Type[]{Type.getType(Environment.class), Type.getType(Cell.class)}), 
                 methodNode);*/
         
-        Jitter jitter = new Jitter(hotspotStrategy);
+        Jitter jitter = new Jitter(hotspotStrategy, 0);
         
         jitter.emit(instructions);
         
@@ -518,13 +555,13 @@ public class Environment {
     }
 
     public BehaviorDescriptor createBehavior(String[] parameters, Cell ast, List<String> errors) {
-        MetaFrame metaFrame = new MetaFrame();
+        MetaFrame metaFrame = new MetaFrame(parameters);
         for (String parameter: parameters) {
             metaFrame.declareVar(parameter);
         }
         Instruction[] instructions = getInstructions(metaFrame, ast, InstructionEmitters.single(Instructions.respond()), errors);
         
-        return instructions != null ? new BehaviorDescriptor(instructions, metaFrame.variableCount() - parameters.length) : null;
+        return instructions != null ? new BehaviorDescriptor(instructions, metaFrame.variableCount() - parameters.length, parameters) : null;
     }
 
     public ArrayCell createArray(int length) {
@@ -742,9 +779,14 @@ public class Environment {
 
                     @Override
                     public void emit(MetaFrame metaFrame, List<Instruction> instructions) {
-                        int index = metaFrame.indexOf(name.string);
-                        //instructions.add(Instructions.load(index));
-                        instructions.add(Instructions.load(name.string));
+                        if(metaFrame.isArgument(name.string)) {
+                            int argIndex = metaFrame.getArgumentIndex(name.string);
+                            instructions.add(Instructions.loadArg(argIndex));
+                        } else {
+                            //int index = metaFrame.indexOf(name.string);
+                            //instructions.add(Instructions.load(index));
+                            instructions.add(Instructions.load(name.string));
+                        }
                     }
                 });
             }
