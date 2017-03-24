@@ -155,6 +155,7 @@ var x = ...
         Cell program2 = cellParser2.parse(src2);
         
         String src = 
+            "(send (self) 'test')\n" + 
             "(send (self) 'test')\n";
         
         /*String src = 

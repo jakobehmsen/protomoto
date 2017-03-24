@@ -166,10 +166,15 @@ public class Environment {
                 // Load behavior from static field access
                 String behaviorFieldName = "behavior" + key;
                 evalAdapter.getStatic(Type.getType(hotspotClassNodeSignature), behaviorFieldName, Type.getType(hotspotClass));
+                // Load environment, self, and args
+                for(int i = 0; i < evalParameterTypes.length; i++) {
+                    evalAdapter.loadArg(i);
+                }
                 
                 evalAdapter.invokeInterface(
                     Type.getType(hotspotClass), 
                     new Method("evaluate", Type.getType(Cell.class), evalParameterTypes));
+                evalAdapter.returnValue();
             }
 
             @Override

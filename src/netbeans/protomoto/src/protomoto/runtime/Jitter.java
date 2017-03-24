@@ -82,7 +82,8 @@ public class Jitter {
     
     public Class<?> compileClass() {
         try {
-            return new SingleClassLoader(classNode).loadClass("Generated");
+            Class<?> c = new SingleClassLoader(classNode).loadClass("Generated");
+            return c;
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(Jitter.class.getName()).log(Level.SEVERE, null, ex);
             return null;
@@ -156,6 +157,10 @@ public class Jitter {
     public void respond() {
         evalAdapter.returnValue();
     }
+
+    public void pop() {
+        evalAdapter.pop();
+    }
     
     private class HotspotField {
         public int symbolCode;
@@ -185,16 +190,23 @@ public class Jitter {
             null, 
             null
         ));
-        initAdapter.loadThis();
+       //initAdapter.loadThis();
         initAdapter.loadArg(0); // Load hotspotStrategy
+        // Load hotspot field id
+        initAdapter.loadThis();
+        initAdapter.push(hotspotId);
         initAdapter.push(symbolCode);
         initAdapter.push(arity);
-        // Instead of calling newHotspot, bind should be called including the hotspot field id
         initAdapter.invokeInterface(
             Type.getType(HotspotStrategy.class), 
-            new Method("newHotspot", Type.getType(Object.class), new Type[]{Type.INT_TYPE, Type.INT_TYPE}));
-        initAdapter.checkCast(Type.getType(hotspotClass));
-        initAdapter.putField(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));
+            new Method("bind", Type.VOID_TYPE, new Type[]{Type.getType(CallSiteContainer.class), Type.INT_TYPE, Type.INT_TYPE, Type.INT_TYPE}));
+        /*// Instead of calling newHotspot, bind should be called including the hotspot field id
+        initAdapter.invokeInterface(
+            Type.getType(HotspotStrategy.class), 
+            new Method("newHotspot", Type.getType(Object.class), new Type[]{Type.INT_TYPE, Type.INT_TYPE}));*/
+        /*initAdapter.checkCast(Type.getType(hotspotClass));
+        // Don't put field, because it is done implicitly
+        initAdapter.putField(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));*/
     }
     
     private String getHotspotFieldName(int symbolCode, int arity) {

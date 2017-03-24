@@ -516,6 +516,11 @@ public class Instructions {
             }
 
             @Override
+            public void emit(Jitter jitter) {
+                jitter.pop();
+            }
+
+            @Override
             public String toString() {
                 return "pop";
             }
