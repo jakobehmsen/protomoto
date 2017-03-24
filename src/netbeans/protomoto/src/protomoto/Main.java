@@ -155,8 +155,9 @@ var x = ...
         Cell program2 = cellParser2.parse(src2);
         
         String src = 
+            "(var x (send (self) 'test'))\n" + 
             "(send (self) 'test')\n" + 
-            "(send (self) 'test')\n";
+            "(get x)\n";
         
         /*String src = 
             "(set_slot (self) 'field1' (consti 123))\n" +

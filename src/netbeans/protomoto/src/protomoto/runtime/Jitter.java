@@ -162,6 +162,23 @@ public class Jitter {
         evalAdapter.pop();
     }
     
+    private Hashtable<String, Integer> varNameToIndex = new Hashtable<>();
+
+    public void declareVar(String name) {
+        int index = evalAdapter.newLocal(Type.getType(Cell.class));
+        varNameToIndex.put(name, index);
+    }
+
+    public void storeVar(String name) {
+        int index = varNameToIndex.get(name);
+        evalAdapter.storeLocal(index);
+    }
+
+    public void loadVar(String name) {
+        int index = varNameToIndex.get(name);
+        evalAdapter.loadLocal(index);
+    }
+    
     private class HotspotField {
         public int symbolCode;
         public int arity;

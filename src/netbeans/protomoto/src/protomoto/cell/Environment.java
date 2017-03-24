@@ -687,8 +687,11 @@ public class Environment {
 
                     @Override
                     public void emit(MetaFrame metaFrame, List<Instruction> instructions) {
-                        int index = metaFrame.indexOf(name.string);
-                        instructions.add(Instructions.store(index));
+                        instructions.add(Instructions.declareVar(name.string));
+                        
+                        //int index = metaFrame.indexOf(name.string);
+                        //instructions.add(Instructions.store(index));
+                        instructions.add(Instructions.store(name.string));
                     }
                 });
             }
@@ -740,7 +743,8 @@ public class Environment {
                     @Override
                     public void emit(MetaFrame metaFrame, List<Instruction> instructions) {
                         int index = metaFrame.indexOf(name.string);
-                        instructions.add(Instructions.load(index));
+                        //instructions.add(Instructions.load(index));
+                        instructions.add(Instructions.load(name.string));
                     }
                 });
             }

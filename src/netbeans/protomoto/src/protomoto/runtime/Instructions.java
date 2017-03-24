@@ -182,6 +182,63 @@ public class Instructions {
             }
         };
     }
+
+    public static Instruction declareVar(String name) {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.declareVar(name);
+            }
+
+            @Override
+            public String toString() {
+                return "declare-var:" + name;
+            }
+        };
+    }
+
+    public static Instruction store(String name) {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.storeVar(name);
+            }
+
+            @Override
+            public String toString() {
+                return "store:" + name;
+            }
+        };
+    }
+
+    public static Instruction load(String name) {
+        return new Instruction() {
+            @Override
+            public void execute(Frame frame) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void emit(Jitter jitter) {
+                jitter.loadVar(name);
+            }
+
+            @Override
+            public String toString() {
+                return "load:" + name;
+            }
+        };
+    }
     
     private interface BinaryInstruction<T> {
         void execute(Frame frame, T lhs, T rhs);
