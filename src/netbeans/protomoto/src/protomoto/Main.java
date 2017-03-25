@@ -144,6 +144,10 @@ var x = ...
             Instructions.loadArg(0),
             Instructions.respond()
         }, 0, new String[]{"arg1"}));
+        environment.getAnyProto().put(environment.getSymbolCode("test$3"), new BehaviorCell(environment.getFrameProto(), new Instruction[]{
+            Instructions.loadArg(1),
+            Instructions.respond()
+        }, 0, new String[]{"arg1", "arg2", "arg3"}));
         
         String src2;
         
@@ -159,7 +163,7 @@ var x = ...
         Cell program2 = cellParser2.parse(src2);
         
         String src = 
-            "(var x (send (self) 'test$1' (consts 'Bla')))\n" + 
+            "(var x (send (self) 'test$3' (consts 'Bla1') (consts 'Bla2') (consts 'Bla3')))\n" + 
             "(send (self) 'test$0')\n" + 
             "(get x)\n";
         

@@ -89,7 +89,7 @@ public class Jitter {
     
     public Class<?> compileClass() {
         try {
-            Class<?> c = new SingleClassLoader(classNode).loadClass("Generated");
+            Class<?> c = new SingleClassLoader(hotspotStrategy.getClassLoader(), classNode).loadClass("Generated");
             return c;
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(Jitter.class.getName()).log(Level.SEVERE, null, ex);

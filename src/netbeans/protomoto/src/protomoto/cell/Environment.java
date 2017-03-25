@@ -1,5 +1,10 @@
 package protomoto.cell;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
@@ -19,6 +24,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -165,6 +171,14 @@ public class Environment {
         evalAdapter.tableSwitch(hotspotCache.keySet().stream().mapToInt(x -> x).toArray(), new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
+                /*MethodType mt = MethodType.methodType(CallSite.class,
+                    MethodHandles.Lookup.class, String.class, MethodType.class);
+                Handle bootstrap = new Handle(Opcodes.H_INVOKESTATIC, "package1/Test2",
+                    "bootstrap", mt.toMethodDescriptorString(), false);
+                
+                evalAdapter.invokeDynamic(null, null, bootstrap);*/
+                
+                
                 // Load behavior from static field access
                 String behaviorFieldName = "behavior" + key;
                 evalAdapter.getStatic(Type.getType(hotspotClassNodeSignature), behaviorFieldName, Type.getType(hotspotClass));
@@ -216,7 +230,7 @@ public class Environment {
         hotspotClassNode.methods.add(evalMethodNode);
         
         try {
-            Class<?> hotspotClassGenerated = new SingleClassLoader(hotspotClassNode).loadClass(hotspotClassNode.name);
+            Class<?> hotspotClassGenerated = new SingleClassLoader(hotspotStrategy.getClassLoader(), hotspotClassNode).loadClass(hotspotClassNode.name);
             Field hotspotCacheMissHandlerField = hotspotClassGenerated.getDeclaredField("hotspotCacheMissHandler");
             hotspotCacheMissHandlerField.setAccessible(true);
             hotspotCacheMissHandlerField.set(null, new HotspotCacheMissHandler() {
@@ -294,22 +308,29 @@ public class Environment {
     
     private HotspotStrategy hotspotStrategy = new HotspotStrategy() {
         private Hashtable<Integer, Class<?>> hotspotInterfaces = new Hashtable<>();
+        private ArrayList<ClassNode> hotspotInterfaceNodes = new ArrayList<>();
+        private SingleClassLoader classLoader = new SingleClassLoader(Arrays.asList());
         
         @Override
         public Class<?> getHotspotInterface(int arity) {
             if(arity == 0) {
                 return Hotspot0.class;
-            } else if(arity == 1) {
+            }/* else if(arity == 1) {
                 return Hotspot1.class;
-            }  else {
+            }*/  else {
                 return hotspotInterfaces.computeIfAbsent(arity, a -> {
                     ClassNode hotspotInterfaceNode = new ClassNode();
                     
+                    //hotspotInterfaceNodes.add(hotspotInterfaceNode);
+                    
+                    hotspotInterfaceNode.interfaces.add(Type.getInternalName(Hotspot.class));
                     hotspotInterfaceNode.version = Opcodes.V1_8;
                     hotspotInterfaceNode.access = Opcodes.ACC_PUBLIC|Opcodes.ACC_ABSTRACT|Opcodes.ACC_INTERFACE;
                     hotspotInterfaceNode.name = "Hotspot" + arity;
                     hotspotInterfaceNode.signature="L" + hotspotInterfaceNode.name + ";";
                     hotspotInterfaceNode.superName="java/lang/Object";
+                    
+                    classLoader.addClassNode(hotspotInterfaceNode);
                     
                     Type[] evalParameterTypes = new Type[2 + arity];
                     evalParameterTypes[0] = Type.getType(Environment.class);
@@ -327,9 +348,21 @@ public class Environment {
                     
                     hotspotInterfaceNode.methods.add(evalMethodNode);
                     
+                    MethodNode getArityMethodNode = new MethodNode(
+                        Opcodes.ACC_PUBLIC,
+                        "getArity",
+                        Type.getMethodDescriptor(Type.INT_TYPE, new Type[]{}),
+                        null, 
+                        null);
+                    
+                    GeneratorAdapter arityAdapter = new GeneratorAdapter(getArityMethodNode, getArityMethodNode.access, getArityMethodNode.name, getArityMethodNode.desc);
+                    arityAdapter.push(arity);
+                    arityAdapter.returnValue();
+                    
+                    hotspotInterfaceNode.methods.add(getArityMethodNode);
+                    
                     try {
-                        return new SingleClassLoader(hotspotInterfaceNode)
-                            .loadClass(hotspotInterfaceNode.name);
+                        return classLoader.loadClass(hotspotInterfaceNode.name);
                     } catch (ClassNotFoundException ex) {
                         Logger.getLogger(Environment.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -413,6 +446,16 @@ public class Environment {
             
             Object hotspot = Environment.newHotspot(this, symbolCode, arity, hotspotCache);
             callSite.set(callSiteId, hotspot);
+        }
+
+        @Override
+        public ClassLoader getClassLoader(ClassLoader parent) {
+            return new SingleClassLoader(parent, hotspotInterfaceNodes);
+        }
+
+        @Override
+        public ClassLoader getClassLoader() {
+            return classLoader;
         }
     };
     
