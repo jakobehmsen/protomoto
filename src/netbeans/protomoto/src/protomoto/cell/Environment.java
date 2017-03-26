@@ -64,6 +64,7 @@ public class Environment {
     private DefaultCell frameProto;
     private DefaultCell nil;
     private Hashtable<String, Integer> stringToSymbolCode = new Hashtable<>();
+    private Hashtable<Integer, String> symbolCodeToString = new Hashtable<>();
     
     public Environment() {
         anyProto = new DefaultCell(null);
@@ -236,6 +237,8 @@ public class Environment {
             hotspotCacheMissHandlerField.set(null, new HotspotCacheMissHandler() {
                 @Override
                 public Cell handleAndEvaluate(Environment environment, Cell self, Cell[] args) {
+                    System.out.println("Cache miss on " + environment.getSymbolFromCode(symbolCode));
+                    
                     BehaviorCell behavior = self.resolveBehavior(environment, symbolCode);
                     
                     Hotspot hotspot = behavior.getHotspot(environment, arity);
@@ -582,7 +585,20 @@ public class Environment {
     }
 
     public final int getSymbolCode(String string) {
-        return stringToSymbolCode.computeIfAbsent(string, k -> stringToSymbolCode.size());
+        Integer symbolCode = stringToSymbolCode.get(string);
+        
+        if(symbolCode == null) {
+            symbolCode = stringToSymbolCode.size();
+            
+            stringToSymbolCode.put(string, symbolCode);
+            symbolCodeToString.put(symbolCode, string);
+        }
+        
+        return symbolCode;
+    }
+
+    private String getSymbolFromCode(int symbolCode) {
+        return symbolCodeToString.get(symbolCode);
     }
 
     public DefaultCell getArrayProto() {

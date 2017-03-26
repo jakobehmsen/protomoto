@@ -1,11 +1,7 @@
 package protomoto.runtime;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Stack;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.objectweb.asm.Label;
@@ -16,7 +12,6 @@ import org.objectweb.asm.commons.Method;
 import org.objectweb.asm.commons.TableSwitchGenerator;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import protomoto.cell.Cell;
 import protomoto.cell.Environment;
@@ -120,7 +115,6 @@ public class Jitter {
         // index=0 means load self
         int offset = 1; // 0=environment, 1=self
         int offsetIndex = offset + index;
-        //adapter.loadLocal(offsetIndex);
         evalAdapter.loadArg(offsetIndex);
     }
 
@@ -203,7 +197,6 @@ public class Jitter {
     }
     
     private ArrayList<HotspotField> hotspotFields = new ArrayList<>();
-    //private Hashtable<String, Integer> hotspotFieldNameToId = new Hashtable<>();
     
     private void declareHotspot(int symbolCode, int arity) {
         Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
@@ -212,13 +205,13 @@ public class Jitter {
         int hotspotId = hotspotFields.size();
         hotspotFields.add(new HotspotField(symbolCode, arity, hotspotId));
         classNode.fields.add(new FieldNode(
-            Opcodes.ACC_PRIVATE, 
+            Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, 
             hotspotFieldName, 
             Type.getDescriptor(hotspotClass), 
             null, 
             null
         ));
-       //initAdapter.loadThis();
+        // Can method handles/call site/dynamic invoke be used instead?
         initAdapter.loadArg(0); // Load hotspotStrategy
         // Load hotspot field id
         initAdapter.loadThis();
@@ -228,13 +221,6 @@ public class Jitter {
         initAdapter.invokeInterface(
             Type.getType(HotspotStrategy.class), 
             new Method("bind", Type.VOID_TYPE, new Type[]{Type.getType(CallSiteContainer.class), Type.INT_TYPE, Type.INT_TYPE, Type.INT_TYPE}));
-        /*// Instead of calling newHotspot, bind should be called including the hotspot field id
-        initAdapter.invokeInterface(
-            Type.getType(HotspotStrategy.class), 
-            new Method("newHotspot", Type.getType(Object.class), new Type[]{Type.INT_TYPE, Type.INT_TYPE}));*/
-        /*initAdapter.checkCast(Type.getType(hotspotClass));
-        // Don't put field, because it is done implicitly
-        initAdapter.putField(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));*/
     }
     
     private String getHotspotFieldName(int symbolCode, int arity) {
@@ -248,10 +234,8 @@ public class Jitter {
             declareHotspot(symbolCode, arity);
         }
         
-        evalAdapter.loadThis();
         Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
-        // Could this be a static field?
-        evalAdapter.getField(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));
+        evalAdapter.getStatic(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));
         evalAdapter.loadArg(0); // Load environment
     }
 
@@ -278,10 +262,9 @@ public class Jitter {
                 HotspotField hotspotField = hotspotFields.stream().filter(e -> e.id == key).findFirst().get();
                 String hotspotFieldName = getHotspotFieldName(hotspotField.symbolCode, hotspotField.arity);
                 Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(hotspotField.arity);
-                setAdapter.loadThis();
                 setAdapter.loadArg(1); // Load hotspotValue
                 setAdapter.checkCast(Type.getType(hotspotClass));
-                setAdapter.putField(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));
+                setAdapter.putStatic(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));
                 setAdapter.visitInsn(Opcodes.RETURN);
             }
 

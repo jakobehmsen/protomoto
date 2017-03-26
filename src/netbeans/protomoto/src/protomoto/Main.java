@@ -165,7 +165,9 @@ var x = ...
         String src = 
             "(var x (send (self) 'test$3' (consts 'Bla1') (consts 'Bla2') (consts 'Bla3')))\n" + 
             "(send (self) 'test$0')\n" + 
-            "(get x)\n";
+            "(send (self) 'test$0')\n" + 
+            "(send (self) 'test$1' (consts 'Bla'))\n" + 
+            "(get x)\n"; 
         
         /*String src = 
             "(set_slot (self) 'field1' (consti 123))\n" +

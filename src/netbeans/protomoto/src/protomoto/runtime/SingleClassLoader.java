@@ -44,16 +44,17 @@ public class SingleClassLoader extends ClassLoader {
         
         if(classNodeMap.containsKey(name)) {
             ClassNode classNode = classNodeMap.get(name);
-            classNode.accept(new TraceClassVisitor(new PrintWriter(System.out)));
-
             ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
             classNode.accept(classWriter);
-
-            try {
-                org.objectweb.asm.util.CheckClassAdapter.verify(new ClassReader(classWriter.toByteArray()), true, new PrintWriter(System.out));
-            } catch(Exception e) {
-                /*if(!hasASMMethodNodes)
-                    throw e;*/
+                
+            if(false) {
+                classNode.accept(new TraceClassVisitor(new PrintWriter(System.out)));
+                try {
+                    org.objectweb.asm.util.CheckClassAdapter.verify(new ClassReader(classWriter.toByteArray()), true, new PrintWriter(System.out));
+                } catch(Exception e) {
+                    /*if(!hasASMMethodNodes)
+                        throw e;*/
+                }
             }
 
             byte[] classBytes = classWriter.toByteArray();
