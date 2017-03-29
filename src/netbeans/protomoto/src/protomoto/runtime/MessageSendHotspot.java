@@ -1,5 +1,5 @@
 package protomoto.runtime;
 
-public interface Hotspot {
+public interface MessageSendHotspot {
     int getArity();
 }

@@ -25,7 +25,6 @@ public class Jitter {
     private ClassNode classNode;
     private GeneratorAdapter evalAdapter;
     private GeneratorAdapter initAdapter;
-    private GeneratorAdapter setAdapter;
 
     public Jitter(HotspotStrategy hotspotStrategy, int arity) {
         this.hotspotStrategy = hotspotStrategy;
@@ -68,18 +67,6 @@ public class Jitter {
         initAdapter = new GeneratorAdapter(Opcodes.ACC_PUBLIC, new Method(constructorNode.name, constructorNode.desc), constructorNode);
         initAdapter.loadThis();
         initAdapter.invokeConstructor(Type.getType(Object.class), new Method("<init>", "()V"));
-        
-        MethodNode setMethodNode = new MethodNode(
-            Opcodes.ACC_PUBLIC,
-            "set",
-            Type.getMethodDescriptor(Type.VOID_TYPE, new Type[]{Type.INT_TYPE, Type.getType(Object.class)}),
-            null, 
-            null);
-        setAdapter = new GeneratorAdapter(
-            Opcodes.ACC_PUBLIC,
-            new Method(setMethodNode.name, setMethodNode.desc), 
-            setMethodNode);
-        classNode.methods.add(setMethodNode);
     }
     
     public Class<?> compileClass() {
@@ -117,12 +104,64 @@ public class Jitter {
         int offsetIndex = offset + index;
         evalAdapter.loadArg(offsetIndex);
     }
+    
+    private class PropertyGetHotspotField {
+        public int symbolCode;
+        public int id;
+
+        public PropertyGetHotspotField(int symbolCode, int id) {
+            this.symbolCode = symbolCode;
+            this.id = id;
+        }
+    }
+    
+    private ArrayList<PropertyGetHotspotField> propertyGetHotspotFieldHotspotFields = new ArrayList<>();
+    
+    private void declarePropertyGetHotspot(int symbolCode) {
+        Class<?> hotspotClass = PropertyGetHotspot.class;
+        String hotspotFieldName = getPropertyGetHotspotFieldName(symbolCode);
+        
+        int hotspotId = propertyGetHotspotFieldHotspotFields.size();
+        propertyGetHotspotFieldHotspotFields.add(new PropertyGetHotspotField(symbolCode, hotspotId));
+        classNode.fields.add(new FieldNode(
+            Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, 
+            hotspotFieldName, 
+            Type.getDescriptor(hotspotClass), 
+            null, 
+            null
+        ));
+        
+        // TODO: Continue from here
+        initAdapter.loadArg(0); // Load hotspotStrategy
+        // Load hotspot field id
+        initAdapter.loadThis();
+        initAdapter.push(hotspotId);
+        initAdapter.push(symbolCode);
+        initAdapter.invokeInterface(
+            Type.getType(HotspotStrategy.class), 
+            new Method("bindGet", Type.VOID_TYPE, new Type[]{Type.getType(CallSiteContainer.class), Type.INT_TYPE, Type.INT_TYPE}));
+    }
+    
+    private String getPropertyGetHotspotFieldName(int symbolCode) {
+        return "hotspot_get_" + symbolCode;
+    }
+    
+    public void getSlot(int symbolCode) {
+        
+    }
 
     public void setSlotPre(int symbolCode) {
         evalAdapter.push(symbolCode);
     }
 
     public void setSlot(int symbolCode) {
+        // How to do this?
+        // Different kinds of properties?
+        // Some properties hold behavior; some hold references to other cells.
+        // Should properties be declared before they are used?
+        
+        // What about reading slots?
+        
         evalAdapter.invokeVirtual(
             Type.getType(Cell.class), 
             new Method("put", Type.VOID_TYPE, new Type[]{Type.INT_TYPE, Type.getType(Cell.class)}));
@@ -184,26 +223,26 @@ public class Jitter {
         evalAdapter.loadArg(2 + index);
     }
     
-    private class HotspotField {
+    private class MessageSendHotspotField {
         public int symbolCode;
         public int arity;
         public int id;
 
-        public HotspotField(int symbolCode, int arity, int id) {
+        public MessageSendHotspotField(int symbolCode, int arity, int id) {
             this.symbolCode = symbolCode;
             this.arity = arity;
             this.id = id;
         }
     }
     
-    private ArrayList<HotspotField> hotspotFields = new ArrayList<>();
+    private ArrayList<MessageSendHotspotField> messageSendHotspotFields = new ArrayList<>();
     
-    private void declareHotspot(int symbolCode, int arity) {
+    private void declareMessageSendHotspot(int symbolCode, int arity) {
         Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
-        String hotspotFieldName = getHotspotFieldName(symbolCode, arity);
+        String hotspotFieldName = getMessageSendHotspotFieldName(symbolCode, arity);
         
-        int hotspotId = hotspotFields.size();
-        hotspotFields.add(new HotspotField(symbolCode, arity, hotspotId));
+        int hotspotId = messageSendHotspotFields.size();
+        messageSendHotspotFields.add(new MessageSendHotspotField(symbolCode, arity, hotspotId));
         classNode.fields.add(new FieldNode(
             Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, 
             hotspotFieldName, 
@@ -223,15 +262,15 @@ public class Jitter {
             new Method("bind", Type.VOID_TYPE, new Type[]{Type.getType(CallSiteContainer.class), Type.INT_TYPE, Type.INT_TYPE, Type.INT_TYPE}));
     }
     
-    private String getHotspotFieldName(int symbolCode, int arity) {
+    private String getMessageSendHotspotFieldName(int symbolCode, int arity) {
         return "hotspot_" + symbolCode + "_" + arity;
     }
     
     public void preSend(int symbolCode, int arity) {
-        String hotspotFieldName = getHotspotFieldName(symbolCode, arity);
+        String hotspotFieldName = getMessageSendHotspotFieldName(symbolCode, arity);
         boolean isDeclared = classNode.fields.stream().anyMatch(x -> ((FieldNode)x).name.equals(hotspotFieldName));
         if(!isDeclared) {
-            declareHotspot(symbolCode, arity);
+            declareMessageSendHotspot(symbolCode, arity);
         }
         
         Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(arity);
@@ -255,12 +294,55 @@ public class Jitter {
     public void end() {
         initAdapter.visitInsn(Opcodes.RETURN);
         
-        setAdapter.loadArg(0); // Load hotspotId
-        setAdapter.tableSwitch(hotspotFields.stream().mapToInt(f -> f.id).toArray(), new TableSwitchGenerator() {
+        MethodNode setGetMethodNode = new MethodNode(
+            Opcodes.ACC_PUBLIC,
+            "setGet",
+            Type.getMethodDescriptor(Type.VOID_TYPE, new Type[]{Type.INT_TYPE, Type.getType(Object.class)}),
+            null, 
+            null);
+        GeneratorAdapter setGetAdapter = new GeneratorAdapter(
+            Opcodes.ACC_PUBLIC,
+            new Method(setGetMethodNode.name, setGetMethodNode.desc), 
+            setGetMethodNode);
+        classNode.methods.add(setGetAdapter);
+        
+        setGetAdapter.loadArg(0); // Load hotspotId
+        setGetAdapter.tableSwitch(propertyGetHotspotFieldHotspotFields.stream().mapToInt(f -> f.id).toArray(), new TableSwitchGenerator() {
             @Override
             public void generateCase(int key, Label end) {
-                HotspotField hotspotField = hotspotFields.stream().filter(e -> e.id == key).findFirst().get();
-                String hotspotFieldName = getHotspotFieldName(hotspotField.symbolCode, hotspotField.arity);
+                PropertyGetHotspotField hotspotField = propertyGetHotspotFieldHotspotFields.stream().filter(e -> e.id == key).findFirst().get();
+                String hotspotFieldName = getPropertyGetHotspotFieldName(hotspotField.symbolCode);
+                Class<?> hotspotClass = PropertyGetHotspot.class;
+                setGetAdapter.loadArg(1); // Load hotspotValue
+                setGetAdapter.checkCast(Type.getType(hotspotClass));
+                setGetAdapter.putStatic(Type.getType(classNode.signature), hotspotFieldName, Type.getType(hotspotClass));
+                setGetAdapter.visitInsn(Opcodes.RETURN);
+            }
+
+            @Override
+            public void generateDefault() {
+                setGetAdapter.visitInsn(Opcodes.RETURN);
+            }
+        });
+        
+        MethodNode setMethodNode = new MethodNode(
+            Opcodes.ACC_PUBLIC,
+            "set",
+            Type.getMethodDescriptor(Type.VOID_TYPE, new Type[]{Type.INT_TYPE, Type.getType(Object.class)}),
+            null, 
+            null);
+        GeneratorAdapter setAdapter = new GeneratorAdapter(
+            Opcodes.ACC_PUBLIC,
+            new Method(setMethodNode.name, setMethodNode.desc), 
+            setMethodNode);
+        classNode.methods.add(setMethodNode);
+        
+        setAdapter.loadArg(0); // Load hotspotId
+        setAdapter.tableSwitch(messageSendHotspotFields.stream().mapToInt(f -> f.id).toArray(), new TableSwitchGenerator() {
+            @Override
+            public void generateCase(int key, Label end) {
+                MessageSendHotspotField hotspotField = messageSendHotspotFields.stream().filter(e -> e.id == key).findFirst().get();
+                String hotspotFieldName = getMessageSendHotspotFieldName(hotspotField.symbolCode, hotspotField.arity);
                 Class<?> hotspotClass = hotspotStrategy.getHotspotInterface(hotspotField.arity);
                 setAdapter.loadArg(1); // Load hotspotValue
                 setAdapter.checkCast(Type.getType(hotspotClass));

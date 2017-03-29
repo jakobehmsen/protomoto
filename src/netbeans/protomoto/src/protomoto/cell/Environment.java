@@ -48,9 +48,9 @@ import protomoto.emit.InstructionMapper;
 import protomoto.runtime.Instructions;
 import protomoto.emit.MetaFrame;
 import protomoto.runtime.EvaluatorInterface;
-import protomoto.runtime.Hotspot;
-import protomoto.runtime.Hotspot0;
-import protomoto.runtime.Hotspot1;
+import protomoto.runtime.MessageSendHotspot;
+import protomoto.runtime.MessageSendHotspot0;
+import protomoto.runtime.MessageSendHotspot1;
 import protomoto.runtime.HotspotStrategy;
 import protomoto.runtime.Jitter;
 import protomoto.runtime.SingleClassLoader;
@@ -99,6 +99,7 @@ public class Environment {
     
     public interface CallSiteContainer {
         void set(int callSiteId, Object hotspot);
+        void setGet(int propertyGetId, Object hotspot);
     }
     
     public interface HotspotCacheMissHandler {
@@ -241,7 +242,7 @@ public class Environment {
                     
                     BehaviorCell behavior = self.resolveBehavior(environment, symbolCode);
                     
-                    Hotspot hotspot = behavior.getHotspot(environment, arity);
+                    MessageSendHotspot hotspot = behavior.getHotspot(environment, arity);
                     hotspotCache.put(self.tag, hotspot);
                     
                     Class<?>[] parameterTypes = new Class<?>[2 + hotspot.getArity()];
@@ -317,7 +318,7 @@ public class Environment {
         @Override
         public Class<?> getHotspotInterface(int arity) {
             if(arity == 0) {
-                return Hotspot0.class;
+                return MessageSendHotspot0.class;
             }/* else if(arity == 1) {
                 return Hotspot1.class;
             }*/  else {
@@ -326,7 +327,7 @@ public class Environment {
                     
                     //hotspotInterfaceNodes.add(hotspotInterfaceNode);
                     
-                    hotspotInterfaceNode.interfaces.add(Type.getInternalName(Hotspot.class));
+                    hotspotInterfaceNode.interfaces.add(Type.getInternalName(MessageSendHotspot.class));
                     hotspotInterfaceNode.version = Opcodes.V1_8;
                     hotspotInterfaceNode.access = Opcodes.ACC_PUBLIC|Opcodes.ACC_ABSTRACT|Opcodes.ACC_INTERFACE;
                     hotspotInterfaceNode.name = "Hotspot" + arity;
@@ -460,6 +461,11 @@ public class Environment {
         public ClassLoader getClassLoader() {
             return classLoader;
         }
+
+        @Override
+        public void bindGet(CallSiteContainer callSite, int propertyGetId, int symbolCode) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
     };
     
     public HotspotStrategy getHotspotStrategy() {
@@ -505,8 +511,8 @@ public class Environment {
         //classNode.methods.add(methodNode);
         
         try {
-            Class<Hotspot0> c = (Class<Hotspot0>) jitter.compileClass();
-            Hotspot0 hotspot = c.getConstructor(HotspotStrategy.class).newInstance(hotspotStrategy);
+            Class<MessageSendHotspot0> c = (Class<MessageSendHotspot0>) jitter.compileClass();
+            MessageSendHotspot0 hotspot = c.getConstructor(HotspotStrategy.class).newInstance(hotspotStrategy);
             //java.lang.reflect.Method evalMethod = c.getMethod("eval", Environment.class, Cell.class);
             
             return new EvaluatorInterface() {
@@ -817,7 +823,8 @@ public class Environment {
                     @Override
                     public void emit(MetaFrame metaFrame, List<Instruction> instructions) {
                         int index = metaFrame.indexOf(name.string);
-                        instructions.add(Instructions.store(index));
+                        //instructions.add(Instructions.store(index));
+                        instructions.add(Instructions.store(name.string));
                     }
                 });
             }

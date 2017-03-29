@@ -8,8 +8,8 @@ import protomoto.runtime.Frame;
 import protomoto.runtime.Instruction;
 import protomoto.cell.AbstractCell;
 import protomoto.cell.Cell;
-import protomoto.runtime.Hotspot;
-import protomoto.runtime.Hotspot0;
+import protomoto.runtime.MessageSendHotspot;
+import protomoto.runtime.MessageSendHotspot0;
 import protomoto.runtime.HotspotStrategy;
 import protomoto.runtime.Jitter;
 
@@ -70,9 +70,9 @@ public class BehaviorCell extends AbstractCell {
         return new BehaviorCell(frameProto, instructions, variableCount, parameters);
     }
     
-    private Hotspot hotspot;
+    private MessageSendHotspot hotspot;
 
-    public Hotspot getHotspot(Environment environment, int arity) {
+    public MessageSendHotspot getHotspot(Environment environment, int arity) {
         if(hotspot == null) {
             try {
                 Jitter jitter = new Jitter(environment.getHotspotStrategy(), arity);
@@ -80,7 +80,7 @@ public class BehaviorCell extends AbstractCell {
                 jitter.emit(instructions);
 
                 Class<?> hotspotClass = jitter.compileClass();
-                hotspot = (Hotspot)hotspotClass.getConstructor(HotspotStrategy.class).newInstance(environment.getHotspotStrategy());
+                hotspot = (MessageSendHotspot)hotspotClass.getConstructor(HotspotStrategy.class).newInstance(environment.getHotspotStrategy());
             } catch (InstantiationException ex) {
                 Logger.getLogger(BehaviorCell.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalAccessException ex) {
